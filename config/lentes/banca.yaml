@@ -1,0 +1,27 @@
+# Lente bancario. Mismo núcleo, otra configuración (B-01..B-06).
+id: banca
+nombre: "Bancario"
+pesos:
+  R: 30
+  I: 30
+  U: 20
+  N: 10
+  E: 10
+rangos:
+  bajo: {min: 0, max: 40}
+  medio: {min: 40, max: 70}
+  alto: {min: 70, max: 100}
+tipos_afirmacion: [hecho, observacion, hipotesis]
+# Barreras del lente bancario: ninguna salida puede contener estas frases (B-06).
+frases_prohibidas:
+  - "compra"
+  - "venta"
+  - "pérdida"
+  - "impago"
+  - "cartera"
+  - "riesgo de clientes"
+plantillas:
+  boletin: prompts/boletin_v1.md
+limites:
+  resumen_palabras: 250
+  preguntas: 3

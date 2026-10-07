@@ -1,0 +1,27 @@
+# Sectores bancarios y reglas de enlace evento -> sector (B-02).
+version: 1
+sectores:
+  - id: logistica
+    nombre: "Logística y transporte"
+    descripcion: "Canal, puertos, transporte de carga y cadena de suministro."
+    keywords: [canal, tránsito, tonelaje, puerto, logística, carga, flete, naviera, marítimo, aduana]
+  - id: turismo
+    nombre: "Turismo y hospitalidad"
+    descripcion: "Visitantes, hoteles y aerolíneas."
+    keywords: [turismo, turista, visitante, hotel, aerolínea, vuelo, ocupación]
+  - id: energia
+    nombre: "Energía y servicios públicos"
+    descripcion: "Electricidad, agua y telecomunicaciones."
+    keywords: [electricidad, agua, energía, telecomunicaciones, tarifa, apagón]
+  - id: construccion
+    nombre: "Construcción e infraestructura"
+    descripcion: "Obra pública y desarrollo inmobiliario."
+    keywords: [construcción, obra, infraestructura, licitación, vivienda]
+  - id: comercio
+    nombre: "Comercio y consumo"
+    descripcion: "Retail, precios y consumo interno."
+    keywords: [comercio, consumo, precio, retail, ventas, inflación]
+  - id: financiero
+    nombre: "Sistema financiero"
+    descripcion: "Banca, crédito y regulación financiera."
+    keywords: [banca, crédito, banco, depósito, tasa, financiero, superintendencia]

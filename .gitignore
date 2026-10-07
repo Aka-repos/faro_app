@@ -1,0 +1,48 @@
+# secretos y entorno
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# entorno y caché de uv
+.venv/
+venv/
+.uv-cache/
+.uv-python/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# datos regenerables / pesados
+data/*.db
+data/*.db-*
+data/vectores.npy
+data/vectores_idx.json
+data/raw/*
+!data/raw/.gitkeep
+data/out/*.jsonl
+!data/out/.gitkeep
+*.npy
+*.pt
+*.bin
+
+# modelos locales
+.cache/
+data/cache/
+data/logs/
+models/
+
+# logs
+logs/
+*.log
+
+# SO / editor
+.DS_Store
+.idea/
+.vscode/

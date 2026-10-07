@@ -1,0 +1,68 @@
+# Baseline de clasificación por palabras clave (D-08). Se compara contra
+# embeddings + regresión logística en H3 (macro-F1).
+version: 1
+temas:
+  economia:
+    - economía
+    - pib
+    - inflación
+    - desempleo
+    - exportaciones
+    - inversión
+    - presupuesto
+    - déficit
+    - banca
+    - crédito
+    - salario
+  logistica:
+    - canal
+    - tránsito
+    - tonelaje
+    - puerto
+    - logística
+    - carga
+    - flete
+    - naviera
+    - marítimo
+    - aduana
+  turismo:
+    - turismo
+    - turista
+    - visitante
+    - hotel
+    - ocupación
+    - aerolínea
+    - vuelo
+    - destino
+  servicios_publicos:
+    - electricidad
+    - agua
+    - energía
+    - telecomunicaciones
+    - transporte
+    - tren
+    - metro
+    - alcantarillado
+    - apagón
+    - tarifa
+  eventos_naturales:
+    - sismo
+    - terremoto
+    - lluvia
+    - inundación
+    - huracán
+    - tormenta
+    - sequía
+    - deslizamiento
+    - alerta
+  regulacion:
+    - ley
+    - decreto
+    - regulación
+    - normativa
+    - gaceta
+    - licitación
+    - contrato
+    - reforma
+    - ministerio
+    - asamblea

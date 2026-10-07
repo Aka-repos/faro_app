@@ -1,0 +1,7 @@
+{
+  "metodo": "embeddings + regresión logística (5-fold)",
+  "macro_f1_lr": 0.886569204815613,
+  "macro_f1_baseline": 0.7597788683480508,
+  "n_etiquetas": 202,
+  "mejora": 0.12679033646756221
+}

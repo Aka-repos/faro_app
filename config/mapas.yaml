@@ -1,0 +1,34 @@
+# Mapa tema -> contexto oficial pertinente (F-06). El enlace solo se crea si
+# hay regla; nunca se fuerza (si no hay relación sustentada, no se enlaza).
+version: 1
+reglas:
+  economia:
+    series: [inec_imae, inec_ipc, acp_transitos]
+    indicadores: [NY.GDP.MKTP.KD.ZG, FP.CPI.TOTL.ZG, SL.UEM.TOTL.ZS, NE.EXP.GNFS.ZS]
+    sismos: false
+    motivo: "El tema económico se contextualiza con series mensuales de actividad/precios y con el indicador anual comparable del Banco Mundial, rotulado por año."
+  logistica:
+    series: [acp_transitos, acp_tonelaje]
+    indicadores: [NE.EXP.GNFS.ZS]
+    sismos: false
+    motivo: "Logística/Canal se contextualiza con tránsitos y tonelaje del Canal y con exportaciones/PIB."
+  turismo:
+    series: [inec_visitantes]
+    indicadores: [NE.EXP.GNFS.ZS]
+    sismos: false
+    motivo: "Turismo se contextualiza con visitantes mensuales y exportaciones de servicios."
+  servicios_publicos:
+    series: [inec_ipc]
+    indicadores: [IT.NET.USER.ZS, SP.POP.TOTL]
+    sismos: false
+    motivo: "Servicios públicos se contextualiza con precios y con cobertura de internet/población."
+  eventos_naturales:
+    series: []
+    indicadores: []
+    sismos: true
+    motivo: "Eventos naturales se contextualizan con el catálogo sísmico USGS; solo hechos sísmicos, nunca evidencia de daños."
+  regulacion:
+    series: []
+    indicadores: []
+    sismos: false
+    motivo: "Regulación no tiene serie/indicador automático; se enlaza solo si hay fuente oficial citada."

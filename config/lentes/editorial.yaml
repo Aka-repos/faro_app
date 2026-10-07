@@ -1,0 +1,25 @@
+# Lente editorial (TVN). Configura puntaje y plantillas sin código nuevo.
+id: editorial
+nombre: "Editorial (TVN)"
+pesos:
+  R: 30   # Relevancia
+  I: 25   # Impacto potencial
+  U: 20   # Urgencia
+  N: 15   # Novedad
+  E: 10   # Evidencia disponible
+rangos:
+  bajo: {min: 0, max: 40}
+  medio: {min: 40, max: 70}
+  alto: {min: 70, max: 100}
+# Tipos de afirmación permitidos en este lente.
+tipos_afirmacion: [hecho, declaracion, inferencia, hipotesis]
+frases_prohibidas: []
+# Plantillas de salida.
+plantillas:
+  brief: prompts/brief_v1.md
+  guion: prompts/guion_v1.md
+limites:
+  brief_palabras: 250
+  guion_segundos_min: 45
+  guion_segundos_max: 60
+  copy_palabras: 80

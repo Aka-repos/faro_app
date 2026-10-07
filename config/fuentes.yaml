@@ -1,0 +1,180 @@
+# Catálogo de fuentes candidatas (F-01). Se valida en H1 con `make check-sources`.
+# metodo: rss | sitemap | html | api | pdf
+version: 1
+fuentes:
+  - id: tvn
+    nombre: "TVN Panamá"
+    familia: noticias
+    url_base: "https://www.tvn-2.com/"
+    metodo: rss
+    rss_url: "https://www.tvn-2.com/rss/"
+    sitemap_url: "https://www.tvn-2.com/sitemap.xml"
+    rate_limit_s: 3
+    user_agent: null
+    licencia: "Titulares y enlaces públicos; no republicar artículos, imágenes ni videos sin autorización del patrocinador"
+    condiciones: "Solo metadatos (título, URL, fecha, resumen publicado). El patrocinio no concede derechos de republicación."
+    notas: "Fuente patrocinadora; mínimo 20 registros en la ventana."
+
+  - id: telemetro
+    nombre: "Telemetro"
+    familia: noticias
+    url_base: "https://www.telemetro.com/"
+    metodo: rss
+    rss_url: "https://www.telemetro.com/rss/"
+    sitemap_url: null
+    rate_limit_s: 3
+    user_agent: null
+    licencia: "Titulares y enlaces públicos"
+    condiciones: "Solo metadatos y resumen publicado."
+    notas: "Corroboración y procedencias."
+
+  - id: panama_america
+    nombre: "Panamá América"
+    familia: noticias
+    url_base: "https://www.panamaamerica.com.pa/"
+    metodo: rss
+    rss_url: "https://www.panamaamerica.com.pa/rss.xml"
+    sitemap_url: null
+    rate_limit_s: 3
+    user_agent: null
+    licencia: "Titulares y enlaces públicos"
+    condiciones: "Solo metadatos y resumen publicado."
+    notas: ""
+
+  - id: la_prensa
+    nombre: "La Prensa Panamá"
+    familia: noticias
+    url_base: "https://www.prensa.com/"
+    metodo: rss
+    rss_url: "https://www.prensa.com/rss/"
+    sitemap_url: null
+    rate_limit_s: 3
+    user_agent: null
+    licencia: "Titulares y enlaces públicos"
+    condiciones: "Solo metadatos y resumen publicado."
+    notas: ""
+
+  - id: la_estrella
+    nombre: "La Estrella de Panamá"
+    familia: noticias
+    url_base: "https://www.laestrella.com.pa/"
+    metodo: rss
+    rss_url: "https://www.laestrella.com.pa/rss/"
+    sitemap_url: null
+    rate_limit_s: 3
+    user_agent: null
+    licencia: "Titulares y enlaces públicos"
+    condiciones: "Solo metadatos y resumen publicado."
+    notas: ""
+
+  - id: metro_libre
+    nombre: "Metro Libre"
+    familia: noticias
+    url_base: "https://www.metrolibre.com/"
+    metodo: sitemap
+    rss_url: null
+    sitemap_url: "https://www.metrolibre.com/sitemap.xml"
+    rate_limit_s: 3
+    user_agent: null
+    licencia: "Titulares y enlaces públicos"
+    condiciones: "Solo metadatos y resumen publicado."
+    notas: ""
+
+  - id: gdelt
+    nombre: "GDELT DOC 2.0"
+    familia: noticias
+    url_base: "https://api.gdeltproject.org/api/v2/doc/doc"
+    metodo: api
+    rate_limit_s: 2
+    user_agent: null
+    licencia: "Metadatos de enlaces a medios; no transfiere derechos de los medios enlazados"
+    condiciones: "Consultar por 'Panama', economía, logística, turismo, eventos naturales; máx 250 por consulta; deduplicar por URL."
+    notas: "Completar meses y medios internacionales."
+
+  - id: inec
+    nombre: "INEC Panamá"
+    familia: oficial_mensual
+    url_base: "https://www.inec.gob.pa/"
+    metodo: html
+    rate_limit_s: 5
+    user_agent: null
+    licencia: "Datos públicos con atribución"
+    condiciones: "Cuadros publicados; conservar unidad y período; verificar rezago."
+    notas: "Actividad económica, precios, visitantes."
+
+  - id: acp
+    nombre: "Autoridad del Canal de Panamá (ACP)"
+    familia: oficial_mensual
+    url_base: "https://pancanal.com/"
+    metodo: html
+    rate_limit_s: 5
+    user_agent: null
+    licencia: "Estadísticas públicas con atribución"
+    condiciones: "Tránsitos y tonelaje; conservar unidad y período."
+    notas: "Contexto logística/Canal."
+
+  - id: sbp
+    nombre: "Superintendencia de Bancos de Panamá (SBP)"
+    familia: oficial_mensual
+    url_base: "https://www.superbancos.gob.pa/"
+    metodo: pdf
+    rate_limit_s: 5
+    user_agent: null
+    licencia: "Información informativa y revisable; no es opinión oficial de la SBP"
+    condiciones: "Extraer series agregadas con período, unidad y página de origen; datos informativos."
+    notas: "Lente bancario (B-03)."
+
+  - id: gaceta
+    nombre: "Gaceta Oficial"
+    familia: oficial
+    url_base: "https://www.gacetaoficial.gob.pa/"
+    metodo: html
+    rate_limit_s: 5
+    user_agent: null
+    licencia: "Documentos públicos"
+    condiciones: "Secciones públicas; regulación."
+    notas: ""
+
+  - id: sinaproc
+    nombre: "SINAPROC"
+    familia: oficial
+    url_base: "https://www.sinaproc.gob.pa/"
+    metodo: html
+    rate_limit_s: 5
+    user_agent: null
+    licencia: "Avisos públicos"
+    condiciones: "Eventos naturales y servicios públicos."
+    notas: ""
+
+  - id: asep
+    nombre: "ASEP"
+    familia: oficial
+    url_base: "https://www.asep.gob.pa/"
+    metodo: html
+    rate_limit_s: 5
+    user_agent: null
+    licencia: "Avisos públicos"
+    condiciones: "Servicios públicos."
+    notas: ""
+
+  - id: banco_mundial
+    nombre: "Banco Mundial (Indicators API v2)"
+    familia: historico
+    url_base: "https://api.worldbank.org/v2/"
+    metodo: api
+    rate_limit_s: 2
+    user_agent: null
+    licencia: "CC BY 4.0 (salvo excepciones en metadatos)"
+    condiciones: "6 países, 6 indicadores, 2010–2024; conservar valores faltantes; atribución."
+    notas: "Contexto anual rotulado por año; entrenamiento."
+
+  - id: usgs
+    nombre: "USGS (FDSN)"
+    familia: eventos
+    url_base: "https://earthquake.usgs.gov/fdsnws/event/1/query"
+    metodo: api
+    rate_limit_s: 2
+    user_agent: null
+    licencia: "Datos públicos (revisar elementos de terceros)"
+    condiciones: "Solo hechos sísmicos; nunca evidencia de daños o pérdidas."
+    notas: "Ventana D-01 + histórico."
