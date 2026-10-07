@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-07T04:29:58.503192+00:00",
+  "generado": "2026-10-07T04:39:36.567287+00:00",
   "conteos": {
     "noticias": 202,
     "series": 96,
@@ -13,7 +13,7 @@
   "cuarentena": [
     {
       "motivo": "fecha_publicacion_invalida",
-      "c": 9
+      "c": 10
     }
   ],
   "top10": [

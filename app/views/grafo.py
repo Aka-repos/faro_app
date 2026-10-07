@@ -1,4 +1,6 @@
-"""Grafo de procedencias (F-16): agencias → medios → eventos → entidades."""
+"""Grafo de procedencias (F-16) con estética tipo Obsidian: nodos-punto, color por
+tipo/estado, etiqueta al pasar el cursor y física forceAtlas2 que se asienta suave.
+"""
 
 from __future__ import annotations
 
@@ -15,25 +17,57 @@ except Exception:  # noqa: BLE001
     _AGRAPH = False
 
 COLOR_TIPO = {
-    "medio": "#42a5f5",
-    "agencia": "#ab47bc",
-    "evento": "#ffa726",
-    "entidad": "#66bb6a",
+    "medio": "#5B8DEF",
+    "agencia": "#B07CD8",
+    "entidad": "#2CA6A4",
+}
+COLOR_EVIDENCIA = {
+    "suficiente para el borrador": "#4CAF50",
+    "parcial": "#F5B041",
+    "insuficiente": "#E74C3C",
 }
 
 
 def _color(d: dict) -> str:
     if d.get("tipo") == "evento":
-        return d.get("color", "#ffa726")
-    return COLOR_TIPO.get(d.get("tipo", ""), "#90a4ae")
+        return COLOR_EVIDENCIA.get(d.get("estado", ""), "#E8A33D")
+    return COLOR_TIPO.get(d.get("tipo", ""), "#9E9E9E")
+
+
+def _config_obsidian() -> Config:
+    """Física forceAtlas2 suave (estilo Obsidian): se asienta, no da vueltas."""
+    config = Config(
+        width=900,
+        height=640,
+        directed=True,
+        physics=True,
+        nodeHighlightBehavior=True,
+        highlightColor="#FFD54F",
+    )
+    # Reemplazamos el dict de física por la estructura correcta de vis-network.
+    config.physics = {
+        "enabled": True,
+        "solver": "forceAtlas2Based",
+        "forceAtlas2Based": {
+            "gravitationalConstant": -70,
+            "centralGravity": 0.02,
+            "springLength": 100,
+            "springConstant": 0.05,
+            "damping": 0.45,
+            "avoidOverlap": 0.35,
+        },
+        "minVelocity": 0.4,
+        "maxVelocity": 20,
+        "stabilization": {"enabled": True, "iterations": 250, "updateInterval": 25, "fit": True},
+    }
+    return config
 
 
 def render(lente: str) -> None:
     st.subheader("Grafo de procedencias")
     st.caption(
-        "**Agencia → medio → evento → entidad.** El color del evento es el estado de evidencia "
-        "(verde=suficiente, ámbar=parcial, rojo=insuficiente). Una agencia replicada por varios "
-        "medios cuenta como una sola fuente."
+        "Estilo Obsidian: agencia → medio → evento → entidad. Pasa el cursor por un nodo para "
+        "ver su detalle. El color del evento es el estado de evidencia."
     )
     if sin_datos():
         return
@@ -42,16 +76,19 @@ def render(lente: str) -> None:
         st.info("No hay eventos para este lente.")
         return
 
-    # Selector de evento para que el grafo sea legible (por defecto el top 1).
-    opciones = ev["id"].tolist()
+    opciones = ["__todos__"] + ev["id"].tolist()
     evento_id = st.selectbox(
-        "Enfocar evento (evita el 'nudo' de todo el corpus)",
+        "Alcance",
         opciones,
         index=0,
-        format_func=lambda i: ev.loc[ev["id"] == i, "titulo_canonico"].iloc[0][:70],
+        format_func=lambda i: (
+            "🕸️ Grafo completo (todo el corpus)"
+            if i == "__todos__"
+            else ev.loc[ev["id"] == i, "titulo_canonico"].iloc[0][:70]
+        ),
     )
 
-    G = construir_grafo(conectar(), evento_id=evento_id)
+    G = construir_grafo(conectar(), evento_id=None if evento_id == "__todos__" else evento_id)
 
     if not _AGRAPH:
         st.info("`streamlit-agraph` no está instalado; mostrando lista de nodos.")
@@ -59,26 +96,29 @@ def render(lente: str) -> None:
             st.markdown(f"- **{d.get('label', n)}** ({d.get('tipo', '?')})")
         return
 
-    nodos = [
-        Node(
-            id=n,
-            label=str(d.get("label", n)),
-            color=_color(d),
-            size=22 if d.get("tipo") == "evento" else 14,
-            title=f"{d.get('tipo', '?')}: {d.get('label', '')}",
+    # Nodos-punto: tamaño según conexiones; etiqueta solo en eventos (los "hubs").
+    grados = dict(G.degree())
+    nodos = []
+    for n, d in G.nodes(data=True):
+        tipo = d.get("tipo", "?")
+        label = str(d.get("label", ""))[:26] if tipo == "evento" else None
+        size = 20 if tipo == "evento" else 9 + min(grados.get(n, 0), 10) * 1.4
+        nodos.append(
+            Node(
+                id=n,
+                title=f"{tipo}: {d.get('label', '')}",
+                label=label,
+                color=_color(d),
+                size=size,
+                shape="dot",
+                font={"color": "#ffffff", "size": 12, "strokeWidth": 3, "strokeColor": "#222222"},
+            )
         )
-        for n, d in G.nodes(data=True)
-    ]
-    aristas = [Edge(source=s, target=t, label=d.get("rel", "")) for s, t, d in G.edges(data=True)]
 
-    # physics=False: sin animación ni "nudo que da vueltas". Layout jerárquico estable.
-    config = Config(
-        width=900,
-        height=650,
-        directed=True,
-        physics=False,
-        hierarchical=True,
-        nodeHighlightBehavior=True,
-        highlightColor="#ffeb3b",
+    aristas = [Edge(source=s, target=t, color="#B0BEC5") for s, t in G.edges()]
+
+    agraph(nodes=nodos, edges=aristas, config=_config_obsidian())
+
+    st.caption(
+        "**Leyenda:** 🟣 agencia · 🔵 medio · 🟢 evento (suficiente) · 🟠 evento (parcial) · 🔴 evento (insuficiente) · 🩵 entidad"
     )
-    agraph(nodes=nodos, edges=aristas, config=config)
