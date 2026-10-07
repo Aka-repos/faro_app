@@ -4,7 +4,7 @@ SHELL := /bin/bash
 PY := uv run python
 UV := uv
 
-.PHONY: setup data data-seed freeze verify-snapshot build run test eval eval-nlp check check-sources demo-offline clean
+.PHONY: setup data data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync clean
 
 ## Instala dependencias (uv sync), precarga e5-small y el modelo de spaCy (offline).
 setup:
@@ -38,17 +38,25 @@ build:
 run:
 	uv run streamlit run app/streamlit_app.py
 
-## Corre la suite de pruebas (smoke + T01–T10 + módulos).
+## Corre la suite de pruebas (smoke + T01–T10 + módulos) y genera junit.xml.
 test:
-	$(UV) run pytest
+	$(UV) run pytest --junitxml=data/reports/junit.xml
 
-## Corre el benchmark y genera reports/metrics_*.json.
+## Corre el benchmark (SPLIT=dev|reservado MODO=usuario|local|determinista) -> reports/metrics_*.json|md.
 eval:
 	$(PY) -m faro.cli eval
+
+## Sincroniza las 8 páginas obligatorias con Notion (o exporta índice para carga manual).
+notion-sync:
+	$(PY) -m faro.cli notion-sync
 
 ## Evalúa solo el núcleo NLP (clasificación + agrupación) -> reports/nlp.json.
 eval-nlp:
 	$(PY) -m faro.cli eval-nlp
+
+## Muestra titulares y pares para etiquetar a mano -> data/labels/*_pendientes.csv.
+labels-sample:
+	$(PY) -m faro.cli labels-sample
 
 ## Formato + lint + pruebas.
 check: 
@@ -60,9 +68,13 @@ check:
 check-sources:
 	$(PY) -m faro.cli check-sources
 
-## Demo offline: instala en carpeta temporal, carga snapshot y arranca Streamlit.
+## Demo offline: clona en carpeta temporal, carga snapshot y arranca Streamlit sin red.
 demo-offline:
 	$(PY) -m faro.cli demo-offline
+
+## Precalienta la caché con las preguntas de docs/guion_demo.md (para la demo sin red).
+demo-cache:
+	$(PY) -m faro.cli demo-cache
 
 ## Limpia artefactos regenerables.
 clean:

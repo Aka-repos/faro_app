@@ -64,6 +64,16 @@ def _tema_mayoritario(noticias: list[dict]) -> str:
     return Counter(temas).most_common(1)[0][0] if temas else "economia"
 
 
+def _cargar_clasificador_tema():
+    """Carga models/tema_lr.joblib si existe (entrenado con etiquetas humanas, WP-3)."""
+    import joblib
+
+    path = S.REPO_ROOT / "models" / "tema_lr.joblib"
+    if path.exists():
+        return joblib.load(path)
+    return None
+
+
 def ingesta(conn) -> dict:
     """Valida el snapshot crudo y carga las tablas de la Capa 1."""
     raw = validate.load_raw()
@@ -76,10 +86,17 @@ def ingesta(conn) -> dict:
     validados = validate.validar_todo(raw)
     cargar_fuentes(conn)
 
-    # Clasificar tema si no viene en el registro (baseline de palabras clave).
+    # Clasificar tema: usa el modelo guardado (models/tema_lr.joblib) si existe; si no, baseline.
+    tema_modelo = _cargar_clasificador_tema()
     for n in validados["noticia"]:
         if not n.get("tema"):
-            n["tema"] = classify.clasificar_baseline(n["titulo"])
+            if tema_modelo is not None:
+                vec = embed.Embedder().encode([n["titulo"]])
+                n["tema"] = classify.predecir(tema_modelo, vec)[0]
+                n["tema_conf"] = float(tema_modelo.predict_proba(vec).max())
+            else:
+                n["tema"] = classify.clasificar_baseline(n["titulo"])
+                n["tema_conf"] = None
 
     db.upsert(conn, "noticia", validados["noticia"])
     db.upsert(conn, "serie_oficial", validados["serie_oficial"])

@@ -30,23 +30,25 @@ uv python install 3.11
 # 2. Dependencias
 make setup
 
-# 3. Generar snapshot (seed sintético por defecto; ver FUENTES_LIVE abajo)
+# 3. Recolectar el snapshot REAL (RSS, sitemaps, GDELT, Banco Mundial, USGS, INEC/ACP/SBP)
 make data
 
-# 4. Construir la base y las capas deducidas
+# 4. Congelar y construir la base
+make freeze
 make build
 ```
 
 ### Snapshot real vs. sintético
 
-El repositorio trae un **seed sintético determinístico** (`faro/seed.py`) para que el pipeline, las pruebas
-y la demo funcionen **sin red** y en una máquina limpia (T10). El snapshot real se obtiene con los
-recolectores de `faro/scrape/` (RSS, sitemap, HTML, GDELT, Banco Mundial, USGS, SBP) ejecutando:
+La demo usa **solo datos reales** recolectados con `make data` (respeta robots.txt y guarda evidencia de
+origen en `data/raw/http/`). El seed sintético (`faro/seed.py`, dominios `.example.invalid`) existe **solo para
+pruebas** y se escribe con `make data-seed` (rechaza escribir en `data/`).
 
 ```bash
-FUENTES_LIVE=1 make data      # recolecta de las fuentes reales (respeta robots.txt)
-make freeze                   # congela v1 y escribe manifest.json con SHA-256
-make verify-snapshot          # recalcula hashes y los compara
+make data            # recolección real (30–90 min por las pausas)
+make data-seed       # solo pruebas (en carpeta temporal)
+make freeze          # congela v1 y escribe manifest.json con SHA-256
+make verify-snapshot # recalcula hashes y los compara
 ```
 
 ## Ejecutar

@@ -69,4 +69,27 @@ def escribir_metricas(metricas: dict) -> str:
     path.write_text(
         json.dumps(metricas, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
+    _escribir_md(metricas, S.REPORTS_DIR / f"metrics_{fecha}.md")
     return str(path)
+
+
+def _escribir_md(metricas: dict, path) -> None:
+    """Tabla Markdown con numerador/denominador + fallos (WP-5)."""
+    lineas = ["# Métricas de la ejecución", "", "| Métrica | Resultado |", "| --- | --- |"]
+    abst = metricas.get("abstencion", {})
+    if abst:
+        lineas.append(f"| Abstención correcta | {abst.get('abstencion_correcta', 0):.2%} |")
+        lineas.append(f"| Abstención incorrecta | {abst.get('abstencion_incorrecta', 0)} |")
+    cob = metricas.get("cobertura_citas", {})
+    if cob:
+        lineas.append(
+            f"| Cobertura de citas | {cob.get('numerador', 0)}/{cob.get('denominador', 0)} |"
+        )
+    lineas.append("")
+    fallos = (abst.get("fallos") or []) + (cob.get("fallos") or [])
+    if fallos:
+        lineas.append("## Fallos")
+        lineas.append("")
+        for f in fallos:
+            lineas.append(f"- {f}")
+    path.write_text("\n".join(lineas), encoding="utf-8")

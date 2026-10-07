@@ -80,28 +80,41 @@ def _cmd_build(args) -> None:
 
 
 def _cmd_eval(args) -> None:
+    import os
+
     from faro import db
     from faro.agent import loop
     from faro.eval import benchmark, metrics
 
-    casos = benchmark.cargar_benchmark()
-    if not casos:
-        casos = benchmark.crear_benchmark_semilla()
+    split = os.environ.get("SPLIT", "dev")
+    modo = os.environ.get("MODO", "determinista")
+    casos = benchmark.cargar_benchmark(split=split)
+    llm_cfg = {"modo": modo}
+    if modo == "usuario":
+        llm_cfg.update(proveedor=S.LLM_PROVEEDOR, modelo=S.LLM_MODELO, api_key=S.LLM_API_KEY)
     conn = db.connect()
     resultados = []
     for c in casos:
         try:
-            r = loop.consultar(c["pregunta"], conn, lente=c.get("lente", "editorial"))
+            r = loop.consultar(
+                c["pregunta"], conn, lente=c.get("lente", "editorial"), llm_cfg=llm_cfg
+            )
             c["respuesta"] = r["respuesta"][:200]
             c["abstuvo"] = r["abstencion"]
+            c["meta"] = r.get("meta", {})
         except Exception as e:  # noqa: BLE001
             c["respuesta"] = f"error:{e}"
             c["abstuvo"] = True
         resultados.append(c)
     conn.close()
     m = {
+        "split": split,
+        "modo": modo,
         "casos": resultados,
         "abstencion": metrics.abstencion(resultados),
+        "cobertura_citas": metrics.cobertura_citas(
+            [a for c in resultados for a in c.get("afirmaciones", [])]
+        ),
     }
     path = metrics.escribir_metricas(m)
     print(f"Métricas escritas en {path}")
@@ -109,31 +122,139 @@ def _cmd_eval(args) -> None:
 
 
 def _cmd_eval_nlp(args) -> None:
-    # Etiquetas: si no hay labels humanas, usar el tema del seed como etiqueta.
-    from faro import db
-    from faro.nlp import classify, embed
+    """Evaluación NLP NO circular: lee data/labels/temas.csv y pares.csv (etiquetas humanas)."""
+    import csv
 
-    conn = db.connect()
-    rows = db.fetchall(conn, "SELECT id, titulo, tema FROM noticia WHERE tema IS NOT NULL")
-    conn.close()
-    titulares = [r["titulo"] for r in rows]
-    etiquetas = [r["tema"] for r in rows]
-    matriz = embed.Embedder().encode(titulares)
-    ev = classify.evaluar_clasificador(matriz, etiquetas)
-    baseline = [classify.clasificar_baseline(t) for t in titulares]
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import f1_score
+    from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
+    from faro.nlp import classify, embed
+    from faro.nlp.embed import EMBEDDER_NAME
+
+    temas_path = S.LABELS_DIR / "temas.csv"
+    pares_path = S.LABELS_DIR / "pares.csv"
+    if not temas_path.exists():
+        print(f"Error: falta {temas_path}. Corre `make labels-sample` y etiqueta a mano (WP-3).")
+        sys.exit(1)
+    if not pares_path.exists():
+        print(f"Error: falta {pares_path}. Corre `make labels-sample` y etiqueta a mano (WP-3).")
+        sys.exit(1)
+
+    with open(temas_path, encoding="utf-8") as fh:
+        filas = [r for r in csv.DictReader(fh) if r.get("tema", "").strip()]
+    titulares = [r["titulo"] for r in filas]
+    etiquetas = [r["tema"].strip() for r in filas]
+    clases = sorted(set(etiquetas))
+    clase_idx = {c: i for i, c in enumerate(clases)}
+    y = np.array([clase_idx[e] for e in etiquetas])
+    matriz = embed.Embedder().encode(titulares)
+
+    baseline = [classify.clasificar_baseline(t) for t in titulares]
     macro_baseline = f1_score(etiquetas, baseline, average="macro")
+
+    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
+    preds = cross_val_predict(clf, matriz, y, cv=StratifiedKFold(5, shuffle=True, random_state=42))
+    macro_lr = f1_score(y, preds, average="macro")
+
+    # Entrenar el clasificador final y guardarlo para el pipeline.
+    import joblib
+
+    models_dir = S.REPO_ROOT / "models"
+    models_dir.mkdir(exist_ok=True)
+    clf.fit(matriz, y)
+    joblib.dump(clf, models_dir / "tema_lr.joblib")
+
+    # Precisión/recall de pares (clustering): un par "mismo evento" si quedó en el mismo cluster.
+    with open(pares_path, encoding="utf-8") as fh:
+        pares = [r for r in csv.DictReader(fh) if r.get("mismo_evento", "").strip()]
+
     report = {
-        "metodo": "embeddings + regresión logística (5-fold)",
-        "macro_f1_lr": ev["macro_f1_lr"],
-        "macro_f1_baseline": float(macro_baseline),
         "n_etiquetas": len(etiquetas),
-        "mejora": ev["macro_f1_lr"] - float(macro_baseline),
+        "n_pares": len(pares),
+        "metodo_etiquetado": "manual por los dos integrantes",
+        "etiquetadores": "[HUMANO]",
+        "fecha": __import__("datetime").datetime.now().isoformat(),
+        "embedder": EMBEDDER_NAME,
+        "ner": "es_core_news_md",
+        "macro_f1_lr": round(float(macro_lr), 4),
+        "macro_f1_baseline": round(float(macro_baseline), 4),
+        "mejora": round(float(macro_lr) - float(macro_baseline), 4),
+        "clases": clases,
     }
     S.ensure_dirs()
     (S.REPORTS_DIR / "nlp.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
     print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+def _cmd_labels_sample(args) -> None:
+    """Genera data/labels/temas_pendientes.csv y pares_pendientes.csv para etiquetar a mano."""
+    import csv
+    import random
+
+    import numpy as np
+
+    from faro import db
+
+    S.ensure_dirs()
+    conn = db.connect()
+    rows = db.fetchall(
+        conn, "SELECT id, titulo, medio FROM noticia WHERE titulo != '' ORDER BY RANDOM()"
+    )
+    conn.close()
+    if len(rows) < 150:
+        print(f"Hay {len(rows)} noticias; se necesita ≥ 150 para muestrear.")
+        sys.exit(1)
+
+    # 150 titulares, estratificados por medio y tema del baseline.
+    rng = random.Random(42)
+    por_medio: dict[str, list] = {}
+    for r in rows:
+        por_medio.setdefault(r["medio"], []).append(r)
+    muestra = []
+    while len(muestra) < 150:
+        for _medio, rs in por_medio.items():
+            if rs and len(muestra) < 150:
+                muestra.append(rs.pop(0))
+    with open(S.LABELS_DIR / "temas_pendientes.csv", "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["noticia_id", "titulo", "medio", "tema"])
+        for r in muestra:
+            w.writerow([r["id"], r["titulo"], r["medio"], ""])
+
+    # 50 pares: mezcla de mismo-cluster y distinto-cluster.
+    from faro.events.cluster import agrupar_eventos
+    from faro.nlp import embed
+
+    noticias = db.fetchall(
+        conn := db.connect(), "SELECT id, titulo, fecha_publicacion FROM noticia ORDER BY id"
+    )
+    matriz = embed.Embedder().encode([n["titulo"] for n in noticias])
+    grupos = agrupar_eventos(noticias, matriz)
+    conn.close()
+    mismo, distinto = [], []
+    for g in grupos:
+        if len(g) >= 2 and len(mismo) < 25:
+            mismo.append((noticias[g[0]], noticias[g[1]]))
+    # Distintos clusters pero coseno > 0.6.
+    for _ in range(1000):
+        if len(distinto) >= 25:
+            break
+        a, b = rng.sample(range(len(noticias)), 2)
+        cos = float(np.dot(matriz[a], matriz[b]))
+        if cos > 0.6 and any(a in g and b in g for g in grupos) is False:
+            distinto.append((noticias[a], noticias[b]))
+    with open(S.LABELS_DIR / "pares_pendientes.csv", "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["id_a", "titulo_a", "id_b", "titulo_b", "mismo_evento"])
+        for a, b in mismo:
+            w.writerow([a["id"], a["titulo"], b["id"], b["titulo"], ""])
+        for a, b in distinto:
+            w.writerow([a["id"], a["titulo"], b["id"], b["titulo"], ""])
+    print(
+        f"temas_pendientes.csv: {len(muestra)} · pares_pendientes.csv: {len(mismo) + len(distinto)}"
+    )
 
 
 def _cmd_check_sources(args) -> None:
@@ -150,17 +271,50 @@ def _cmd_check_sources(args) -> None:
 
 def _cmd_demo_offline(args) -> None:
     import os
+    import shutil
     import subprocess
     import tempfile
     from pathlib import Path
 
     tmp = Path(tempfile.mkdtemp(prefix="faro-demo-"))
     print(f"Clonando repo a {tmp} ...")
-    subprocess.run(["cp", "-R", str(S.REPO_ROOT) + "/.", str(tmp)], check=True)
-    # Precarga el snapshot ya congelado y arranca Streamlit.
-    subprocess.run([sys.executable, "-m", "faro.cli", "build"], cwd=str(tmp), check=True)
+    subprocess.run(["git", "clone", "--depth", "1", str(S.REPO_ROOT), str(tmp)], check=True)
+    # Copiar caché de modelos HF y modelos entrenados (para no descargar).
+    for src, dst in (
+        (S.DATA_DIR / "cache" / "hf", tmp / "data" / "cache" / "hf"),
+        (S.REPO_ROOT / "models", tmp / "models"),
+    ):
+        if src.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+    env = {**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"}
+    subprocess.run(["uv", "sync", "--frozen"], cwd=str(tmp), check=True, env=env)
+    subprocess.run(["make", "build"], cwd=str(tmp), check=True, env=env)
     print("Snapshot cargado. Arrancando Streamlit (modo offline)...")
-    os.execvp("uv", ["uv", "run", "streamlit", "run", "app/streamlit_app.py"])
+    os.execvpe("uv", ["uv", "run", "streamlit", "run", "app/streamlit_app.py"], env=env)
+
+
+def _cmd_demo_cache(args) -> None:
+    """Precalienta la caché con las preguntas de docs/guion_demo.md."""
+    from faro import db
+    from faro.agent import loop
+
+    guion = S.REPO_ROOT / "docs" / "guion_demo.md"
+    if not guion.exists():
+        print("docs/guion_demo.md no existe; no hay preguntas que cachear.")
+        return
+    preguntas = [
+        line.strip()
+        for line in guion.read_text(encoding="utf-8").splitlines()
+        if line.strip().startswith("- P: ")
+    ]
+    conn = db.connect()
+    for p in preguntas:
+        pregunta = p[5:]
+        loop.consultar(pregunta, conn)
+        print(f"  cacheada: {pregunta[:60]}")
+    conn.close()
+    print(f"Caché llena con {len(preguntas)} preguntas.")
 
 
 def main() -> None:
@@ -173,8 +327,11 @@ def main() -> None:
     sub.add_parser("build")
     sub.add_parser("eval")
     sub.add_parser("eval-nlp")
+    sub.add_parser("labels-sample")
     sub.add_parser("check-sources")
     sub.add_parser("demo-offline")
+    sub.add_parser("demo-cache")
+    sub.add_parser("notion-sync")
 
     args = p.parse_args()
     {
@@ -185,9 +342,18 @@ def main() -> None:
         "build": _cmd_build,
         "eval": _cmd_eval,
         "eval-nlp": _cmd_eval_nlp,
+        "labels-sample": _cmd_labels_sample,
         "check-sources": _cmd_check_sources,
         "demo-offline": _cmd_demo_offline,
+        "demo-cache": _cmd_demo_cache,
+        "notion-sync": _cmd_notion_sync,
     }[args.cmd](args)
+
+
+def _cmd_notion_sync(args) -> None:
+    from faro.review import notion_sync
+
+    print(json.dumps(notion_sync.sync_notion(), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

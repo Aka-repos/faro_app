@@ -26,6 +26,9 @@ Las decisiones nuevas (D-17 en adelante) se registran aquí con fecha y justific
 
 | ID | Fecha | Decisión | Justificación |
 | --- | --- | --- | --- |
-| D-17 | 2026-10-06 | Seed sintético determinístico como snapshot de demostración por defecto | Permite que el pipeline, T01–T10 y la demo corran sin red y en máquina limpia (T10); el snapshot real se obtiene con `FUENTES_LIVE=1 make data`. |
-| D-18 | 2026-10-06 | Dependencias pesadas (sentence-transformers, spacy) como extra `ml` | `make setup` debe ser rápido y funcionar sin red; `faro/nlp` degrada a hashing de n-gramas y regex determinísticos. |
+| D-17 | 2026-10-07 | El seed sintético existe solo para pruebas automatizadas, con dominios ficticios `.example.invalid`; la demo usa exclusivamente el snapshot real | WP-1: los datos de la demo deben ser reales y trazables; el seed no puede presentarse como real. |
+| D-18 | 2026-10-07 | e5-small y spaCy `es_core_news_md` son dependencias obligatorias; el respaldo por hashing/regex solo en tests | WP-2: la IA declarada debe ser la real; el fallback es solo para pruebas (`FARO_PERMITIR_FALLBACK=1`). |
+| D-20 | 2026-10-07 | `make data` recolecta datos reales; `make data-seed` escribe el seed solo fuera de `data/` | WP-1.6: proteger el snapshot real de reescrituras accidentales. |
+| D-21 | 2026-10-07 | El agente usa el LLM del usuario (con herramientas) cuando hay proveedor configurado; el enrutador determinista queda como respaldo | WP-4: la cascada D-06 queda real; el verificador es el filtro final. |
+| D-22 | 2026-10-07 | `data/raw/*.jsonl`, `manual/` e `http/index.jsonl` se versionan; los `.gz` de evidencia se publican como asset de release | WP-8: el jurado debe poder verificar los hashes del manifest. |
 | D-19 | 2026-10-06 | Verificador exige respaldo literal solo a `hecho`/`observacion`; inferencias/hipótesis/declaraciones se marcan como tales | Las inferencias derivan de la evidencia pero no son literales; el candado de cifras sigue aplicando a todos los tipos. |

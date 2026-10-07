@@ -42,3 +42,28 @@ def test_build_offline_usa_snapshot(built_db):
     n = conn.execute("SELECT COUNT(*) c FROM noticia").fetchone()[0]
     conn.close()
     assert n >= 100
+
+
+def test_sin_red_agente_y_bandeja_responden(built_db, monkeypatch):
+    """Bloquea la red (httpx/socket) y verifica que el agente y la bandeja funcionan."""
+    import socket
+
+    import httpx
+
+    from faro import db
+    from faro.agent import loop, tools
+
+    def _bloquear(*a, **k):
+        raise httpx.ConnectError("red bloqueada en test")
+
+    monkeypatch.setattr(httpx.Client, "send", _bloquear)
+    monkeypatch.setattr(
+        socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(OSError("offline"))
+    )
+
+    conn = db.connect(built_db)
+    r = loop.consultar("¿Qué cinco temas merecen revisión hoy?", conn)
+    assert r["respuesta"]
+    top = tools.ranking(conn, "editorial", 5)
+    assert len(top) >= 1
+    conn.close()

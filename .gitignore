@@ -24,8 +24,8 @@ data/*.db
 data/*.db-*
 data/vectores.npy
 data/vectores_idx.json
-data/raw/*
-!data/raw/.gitkeep
+# snapshot: se versionan los JSONL y el índice http (el jurado verifica los hashes).
+data/raw/http/*.gz
 data/out/*.jsonl
 !data/out/.gitkeep
 *.npy
