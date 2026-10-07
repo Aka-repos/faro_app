@@ -12,7 +12,7 @@ import streamlit as st
 st.set_page_config(page_title="FARO · Copiloto de inteligencia informativa", layout="wide")
 
 from app.db_ui import db_existe  # noqa: E402
-from app.pages import agente, bandeja, calidad, comparador, ficha, grafo, paquete  # noqa: E402
+from app.views import agente, bandeja, calidad, comparador, ficha, grafo, paquete  # noqa: E402
 
 VISTAS = {
     "📥 Bandeja": bandeja.render,
@@ -31,6 +31,18 @@ with st.sidebar:
     vista = st.radio("Vista", list(VISTAS.keys()))
     st.divider()
     lente = st.radio("Lente", ["editorial", "banca"], horizontal=True)
+
+    if lente == "editorial":
+        st.caption(
+            "**Lente editorial (TVN):** agenda priorizada, ficha de investigación y "
+            "borradores (brief, guion y copy) para el editor."
+        )
+    else:
+        st.caption(
+            "**Lente bancario:** boletín de entorno con sectores, horizonte y "
+            "preguntas para un analista. No evalúa clientes ni recomienda compra/venta."
+        )
+
     modo = st.radio("Modo LLM", ["auto", "usuario", "local"], horizontal=True)
 
     with st.expander("Proveedor y clave (BYOK)"):

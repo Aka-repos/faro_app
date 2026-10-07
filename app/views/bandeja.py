@@ -8,7 +8,14 @@ from app.db_ui import df_eventos, sin_datos
 
 
 def render(lente: str) -> None:
-    st.subheader("Bandeja de agenda")
+    if lente == "banca":
+        st.subheader("Señales sectoriales (lente bancario)")
+        st.caption(
+            "Misma bandeja, con pesos bancarios: señales del entorno por sector "
+            "(logística, turismo, energía…). No es un score de clientes."
+        )
+    else:
+        st.subheader("Bandeja de agenda")
     if sin_datos():
         return
     ev = df_eventos(lente)

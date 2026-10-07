@@ -22,7 +22,9 @@ def render(lente: str) -> None:
         )
         return
 
-    filas = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines() if line.strip()]
+    filas = [
+        json.loads(line) for line in log.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
     completas = [f for f in filas if "proveedor" in f]
     st.markdown(f"**{len(filas)} ejecuciones registradas** ({len(completas)} completas).")
 
