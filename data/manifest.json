@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "fecha_corte_UTC": "2026-10-07T03:37:20.975220+00:00",
+  "fecha_corte_UTC": "2026-10-07T04:19:38.611768+00:00",
   "consultas": {
     "ventana": [
       "2025-10-02T00:00:00+00:00",
@@ -125,9 +125,9 @@
     "sintético: el seed es un corpus de demostración, no datos reales"
   ],
   "sha256": {
-    "indicadores.jsonl": "5045b9dfb5e57f304946bdae419319ac6777c3f9366c635e8b7b2c9568544f03",
-    "noticias.jsonl": "5ecd034f2a91e1637a5caa35a0540a813e3cd1935fbd5712a04de46dd91b09c9",
-    "series.jsonl": "b591ff372e0011dc0dda839af00e4ba64af843b11e64e071407eb5c66269c81a",
+    "indicadores.jsonl": "9a5a6443ddaee81cbaa6fae26580053cf508bdc4f157f188b7c82dad6c728a9f",
+    "noticias.jsonl": "259cb229257e081f8237c57de6c41213b4aeb0038bac436ddf574f84aeba95d5",
+    "series.jsonl": "d4d816a4e328f60a713da70c2e1fdeff3b844d8e8ea3faa757ff683b95fc6ad2",
     "sismos.jsonl": "662b60535324323575133314e14946abd06d0a5c8cb4e67bbcd0851df98254ec"
   }
 }

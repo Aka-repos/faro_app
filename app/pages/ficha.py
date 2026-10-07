@@ -4,18 +4,16 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import cargar_evento, df_eventos
+from app.db_ui import cargar_evento, df_eventos, sin_datos
 
 
 def render(lente: str) -> None:
     st.subheader("Ficha de investigación")
-    try:
-        ev = df_eventos(lente)
-    except Exception:  # noqa: BLE001
-        st.info("No hay datos. Corre `make build`.")
+    if sin_datos():
         return
+    ev = df_eventos(lente)
     if ev.empty:
-        st.info("Sin eventos.")
+        st.info("No hay eventos para este lente.")
         return
     evento_id = st.selectbox(
         "Evento",
@@ -28,11 +26,13 @@ def render(lente: str) -> None:
         return
     st.markdown(f"### {ev['titulo_canonico']}")
     st.write(
-        f"Tema: **{ev['tema']}** · menciones **{ev['n_menciones']}** · medios **{ev['n_medios']}** · procedencias **{ev['n_procedencias']}**"
+        f"Tema: **{ev['tema']}** · menciones **{ev['n_menciones']}** · medios **{ev['n_medios']}**"
+        f" · procedencias **{ev['n_procedencias']}**"
     )
     for p in ev["puntajes"]:
         st.markdown(
-            f"Puntaje ({p['lente']}): **P={p['P']}** ({p['rango']}) — estado: **{p['estado_evidencia']}** · R={p['R']} I={p['I']} U={p['U']} N={p['N']} E={p['E']}"
+            f"Puntaje ({p['lente']}): **P={p['P']}** ({p['rango']}) — estado: "
+            f"**{p['estado_evidencia']}** · R={p['R']} I={p['I']} U={p['U']} N={p['N']} E={p['E']}"
         )
     st.markdown("#### ¿Qué se reporta?")
     for n in ev["noticias"]:

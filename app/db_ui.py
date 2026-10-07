@@ -1,16 +1,34 @@
-"""Utilidades de UI: apertura de DB y datos para las vistas."""
+"""Utilidades de UI: apertura de DB y datos para las vistas.
+
+Abrimos una conexión fresca por consulta (sqlite local es barato) para evitar
+problemas de caché/hilos con conexiones persistentes en Streamlit.
+"""
 
 from __future__ import annotations
 
-import pandas as pd
-import streamlit as st
+import sqlite3
 
+import pandas as pd
+
+import config.settings as S
 from faro import db
 
 
-@st.cache_resource
-def conectar():
+def conectar() -> sqlite3.Connection:
     return db.connect()
+
+
+def db_existe() -> bool:
+    """True si la base existe y tiene al menos una noticia."""
+    if not S.DB_PATH.exists():
+        return False
+    try:
+        conn = conectar()
+        n = conn.execute("SELECT COUNT(*) FROM noticia").fetchone()[0]
+        conn.close()
+        return n > 0
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def df_noticias():
@@ -39,6 +57,7 @@ def cargar_evento(evento_id):
         "records"
     )
     if not ev:
+        conn.close()
         return None
     ev = ev[0]
     ev["noticias"] = pd.read_sql_query(
@@ -52,4 +71,15 @@ def cargar_evento(evento_id):
     ev["puntajes"] = pd.read_sql_query(
         "SELECT * FROM evento_puntaje WHERE evento_id=?", conn, params=(evento_id,)
     ).to_dict("records")
+    conn.close()
     return ev
+
+
+def sin_datos() -> bool:
+    """Marca común para vistas que dependen del snapshot."""
+    if not db_existe():
+        import streamlit as st
+
+        st.warning("Todavía no hay datos. Corre `make build` (o `docker compose up`) primero.")
+        return True
+    return False

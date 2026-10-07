@@ -14,16 +14,20 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # 1) Dependencias del proyecto (pyproject.toml -> pip).
+#    Se copia solo lo que `pip install .` necesita (faro, schemas, config) para
+#    que cambios en la UI (app/) no invaliden la capa de dependencias.
 COPY pyproject.toml README.md ./
 COPY faro ./faro
 COPY schemas ./schemas
 COPY config ./config
-COPY app ./app
-COPY prompts ./prompts
 
 RUN pip install --no-cache-dir .
 
-# 2) Entrypoint: construye el snapshot (offline) y arranca la UI.
+# 2) Código de la UI y prompts.
+COPY app ./app
+COPY prompts ./prompts
+
+# 3) Entrypoint: construye el snapshot (offline) y arranca la UI.
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 

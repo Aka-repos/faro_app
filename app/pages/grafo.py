@@ -1,32 +1,73 @@
-"""Grafo de procedencias (F-16)."""
+"""Grafo de procedencias (F-16): medios, agencias, eventos y entidades (interactivo)."""
 
 from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import conectar, df_eventos
+from app.db_ui import conectar, df_eventos, sin_datos
 from faro.events.graph import construir_grafo
+
+try:
+    from streamlit_agraph import Config, Edge, Node, agraph
+
+    _AGRAPH = True
+except Exception:  # noqa: BLE001
+    _AGRAPH = False
+
+COLOR_TIPO = {
+    "medio": "#42a5f5",
+    "agencia": "#ab47bc",
+    "evento": "#ffa726",
+    "entidad": "#66bb6a",
+}
+
+
+def _color(d: dict) -> str:
+    if d.get("tipo") == "evento":
+        return d.get("color", "#ffa726")
+    return COLOR_TIPO.get(d.get("tipo", ""), "#90a4ae")
 
 
 def render(lente: str) -> None:
     st.subheader("Grafo de procedencias")
-    try:
-        ev = df_eventos(lente)
-    except Exception:  # noqa: BLE001
-        st.info("No hay datos. Corre `make build`.")
+    st.caption("Medios / agencias → evento → entidades. El color del evento = estado de evidencia.")
+    if sin_datos():
         return
+    ev = df_eventos(lente)
     if ev.empty:
-        st.info("Sin eventos.")
+        st.info("No hay eventos para este lente.")
         return
+
     G = construir_grafo(conectar())
-    st.caption(f"Nodos: {G.number_of_nodes()} · Aristas: {G.number_of_edges()}")
-    st.markdown(
-        "**Medios / agencias → evento → entidades.** Color del evento = estado de evidencia."
-    )
-    nodos = []
-    for n, d in G.nodes(data=True):
-        nodos.append(f"• {d.get('label', n)} ({d.get('tipo', '?')})")
-    st.text("\n".join(nodos[:40]))
-    st.info(
-        "Para una vista interactiva completa usa `streamlit-agraph` (se degrada a lista si no está instalado)."
-    )
+
+    if _AGRAPH:
+        nodos = []
+        for n, d in G.nodes(data=True):
+            nodos.append(
+                Node(
+                    id=n,
+                    label=str(d.get("label", n)),
+                    color=_color(d),
+                    size=20 if d.get("tipo") == "evento" else 12,
+                    shape="dot",
+                    title=f"{d.get('tipo', '?')}: {d.get('label', '')}",
+                )
+            )
+        aristas = []
+        for s, t, d in G.edges(data=True):
+            aristas.append(Edge(source=s, target=t, label=d.get("rel", "")))
+        config = Config(
+            width=900,
+            height=650,
+            directed=True,
+            physics=True,
+            hierarchical=False,
+            nodeHighlightBehavior=True,
+            highlightColor="#ffeb3b",
+            collapsible=True,
+        )
+        agraph(nodes=nodos, edges=aristas, config=config)
+    else:
+        st.info("`streamlit-agraph` no está instalado; mostrando lista de nodos.")
+        for n, d in G.nodes(data=True):
+            st.markdown(f"- **{d.get('label', n)}** ({d.get('tipo', '?')})")

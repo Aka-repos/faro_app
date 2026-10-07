@@ -1,6 +1,6 @@
 """FARO — interfaz Streamlit.
 
-Barra lateral: lente, proveedor y clave (solo en memoria), modo (usuario/local/auto)
+Barra lateral: vista, lente, proveedor y clave (solo en memoria), modo (usuario/local/auto)
 y fecha de referencia. Siete vistas: Bandeja, Ficha, Paquete, Agente, Grafo,
 Comparador y Calidad.
 """
@@ -11,22 +11,25 @@ import streamlit as st
 
 st.set_page_config(page_title="FARO · Copiloto de inteligencia informativa", layout="wide")
 
+from app.db_ui import db_existe  # noqa: E402
 from app.pages import agente, bandeja, calidad, comparador, ficha, grafo, paquete  # noqa: E402
 
 VISTAS = {
-    "Bandeja": bandeja.render,
-    "Ficha": ficha.render,
-    "Paquete editorial / Boletín": paquete.render,
-    "Agente": agente.render,
-    "Grafo": grafo.render,
-    "Comparador": comparador.render,
-    "Calidad": calidad.render,
+    "📥 Bandeja": bandeja.render,
+    "🗂️ Ficha": ficha.render,
+    "📝 Paquete / Boletín": paquete.render,
+    "🤖 Agente": agente.render,
+    "🕸️ Grafo": grafo.render,
+    "⚖️ Comparador": comparador.render,
+    "🧪 Calidad": calidad.render,
 }
 
 # --- Barra lateral ----------------------------------------------------------
 with st.sidebar:
     st.title("FARO")
     st.caption("No escribe noticias. Dice qué se sabe, de dónde y qué falta.")
+    vista = st.radio("Vista", list(VISTAS.keys()))
+    st.divider()
     lente = st.radio("Lente", ["editorial", "banca"], horizontal=True)
     modo = st.radio("Modo LLM", ["auto", "usuario", "local"], horizontal=True)
 
@@ -40,10 +43,8 @@ with st.sidebar:
             st.session_state["faro_api_key"] = api_key
     st.caption("Fecha de referencia: 2026-09-30 23:59 (Panamá)")
 
-    if st.button("Recargar datos"):
-        st.cache_resource.clear()
-        st.rerun()
+    if not db_existe():
+        st.warning("⚠️ Sin datos. Corre `make build` (o `docker compose up`) y recarga.")
 
-# --- Navegación -------------------------------------------------------------
-vista = st.radio("Vista", list(VISTAS.keys()), horizontal=True)
+# --- Vista ------------------------------------------------------------------
 VISTAS[vista](lente)

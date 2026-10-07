@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import cargar_evento, df_eventos
+from app.db_ui import cargar_evento, df_eventos, sin_datos
 from faro import db
 from faro.evidence import resolver
 from faro.lenses import banca as lente_banca
@@ -13,13 +13,11 @@ from faro.llm import extractive
 
 def render(lente: str) -> None:
     st.subheader("Paquete editorial" if lente == "editorial" else "Boletín bancario")
-    try:
-        ev = df_eventos(lente)
-    except Exception:  # noqa: BLE001
-        st.info("No hay datos. Corre `make build`.")
+    if sin_datos():
         return
+    ev = df_eventos(lente)
     if ev.empty:
-        st.info("Sin eventos.")
+        st.info("No hay eventos para este lente.")
         return
     evento_id = st.selectbox(
         "Evento",
