@@ -129,13 +129,29 @@ VALIDATORS = {
 
 
 def validar_todo(raw: dict[str, list[dict]] | None = None) -> dict:
-    """Valida todo el snapshot y devuelve normalizados + cuarentena."""
+    """Valida todo el snapshot y devuelve normalizados + cuarentena.
+
+    Los registros con `sintetico: true` van a cuarentena salvo que se fije
+    `FARO_PERMITIR_SINTETICO=1` (solo en tests, WP-1.7).
+    """
+    import os
+
+    permitir_sintetico = os.environ.get("FARO_PERMITIR_SINTETICO") == "1"
     raw = raw or load_raw()
     resultado = {"noticia": [], "serie_oficial": [], "indicador": [], "sismo": [], "cuarentena": []}
     seen_urls: set[str] = set()
     for key, rows in raw.items():
         fn = VALIDATORS[key]
         for r in rows:
+            if r.get("sintetico") and not permitir_sintetico:
+                resultado["cuarentena"].append(
+                    {
+                        "fuente_id": r.get("fuente_id", ""),
+                        "fila_raw": json.dumps(r)[:200],
+                        "motivo": "sintetico_no_permitido",
+                    }
+                )
+                continue
             rec, motivo = fn(r)
             if rec is None:
                 resultado["cuarentena"].append(

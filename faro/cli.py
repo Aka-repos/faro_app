@@ -10,10 +10,26 @@ import config.settings as S
 
 
 def _cmd_data(args) -> None:
+    """Recolección real (WP-1). Nunca genera datos sintéticos."""
+    from faro.scrape.collect import recolectar
+
+    res = recolectar()
+    print("Recolección real completa:")
+    print(json.dumps(res["conteos"], ensure_ascii=False, indent=2))
+
+
+def _cmd_data_seed(args) -> None:
+    """Escribe el seed sintético SOLO si FARO_DATA_DIR apunta fuera de data/ (protección)."""
+    from pathlib import Path
+
+    import config.settings as S
     from faro.seed import gen_indicadores, gen_noticias, gen_series, gen_sismos, write_raw
 
+    if Path(S.DATA_DIR).resolve() == (S.REPO_ROOT / "data").resolve():
+        print("Rechazado: make data-seed no puede escribir en data/ (protegería el snapshot real).")
+        sys.exit(1)
     conteos = write_raw(gen_noticias(), gen_series(), gen_indicadores(), gen_sismos())
-    print("Snapshot sintético escrito en data/raw/:")
+    print("Seed sintético escrito en", S.DATA_DIR)
     for k, v in conteos.items():
         print(f"  {k}: {v}")
 
@@ -27,6 +43,14 @@ def _cmd_freeze(args) -> None:
     conteos = {
         p.name: sum(1 for _ in open(p, encoding="utf-8")) for p in Path(S.RAW_DIR).glob("*.jsonl")
     }
+    # Evidencia de origen (respuestas HTTP crudas) y transcripciones manuales.
+    http_idx = S.RAW_DIR / "http" / "index.jsonl"
+    if http_idx.exists():
+        conteos["http/index.jsonl"] = sum(1 for _ in open(http_idx, encoding="utf-8"))
+    manual = S.RAW_DIR / "manual"
+    if manual.exists():
+        for p in manual.glob("*.csv"):
+            conteos[f"manual/{p.name}"] = sum(1 for _ in open(p, encoding="utf-8"))
     path = write_manifest(build_manifest(conteos))
     print(f"manifest.json escrito en {path}")
 
@@ -143,6 +167,7 @@ def main() -> None:
     p = argparse.ArgumentParser(prog="faro", description="FARO — pipeline y demo")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("data")
+    sub.add_parser("data-seed")
     sub.add_parser("freeze")
     sub.add_parser("verify")
     sub.add_parser("build")
@@ -154,6 +179,7 @@ def main() -> None:
     args = p.parse_args()
     {
         "data": _cmd_data,
+        "data-seed": _cmd_data_seed,
         "freeze": _cmd_freeze,
         "verify": _cmd_verify,
         "build": _cmd_build,

@@ -4,7 +4,7 @@ SHELL := /bin/bash
 PY := uv run python
 UV := uv
 
-.PHONY: setup data freeze verify-snapshot build run test eval eval-nlp check check-sources demo-offline clean
+.PHONY: setup data data-seed freeze verify-snapshot build run test eval eval-nlp check check-sources demo-offline clean
 
 ## Instala dependencias (uv sync) y precarga config mínima.
 setup:
@@ -12,9 +12,13 @@ setup:
 	$(PY) -c "from config import settings; settings.ensure_dirs()"
 	@echo "setup OK"
 
-## Genera el snapshot (seed sintético por defecto; usa scraping si FUENTES_LIVE=1).
+## Recolecta el snapshot REAL (RSS, sitemaps, GDELT, Banco Mundial, USGS, INEC/ACP/SBP).
 data:
 	$(PY) -m faro.cli data
+
+## Escribe el seed sintético SOLO en una carpeta temporal (para pruebas, nunca en data/).
+data-seed:
+	$(PY) -m faro.cli data-seed
 
 ## Congela la versión v1 del snapshot (raw/ + manifest con SHA-256).
 freeze:
@@ -46,8 +50,8 @@ eval-nlp:
 
 ## Formato + lint + pruebas.
 check: 
-	$(UV) run ruff check faro schemas app config tests || true
-	$(UV) run ruff format --check faro schemas app config tests || true
+	$(UV) run ruff check faro schemas app config tests
+	$(UV) run ruff format --check faro schemas app config tests
 	$(UV) run pytest
 
 ## Revisa fuentes candidatas (robots.txt + método + volumen) -> reports/fuentes_check.json.

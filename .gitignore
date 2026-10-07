@@ -46,3 +46,7 @@ logs/
 .DS_Store
 .idea/
 .vscode/
+
+# PDFs en la raíz: solo se versiona el del reto; el resto se ignora o se mueve a docs/.
+/*.pdf
+!/hackIAthon - reto TVN Media.pdf

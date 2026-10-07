@@ -28,3 +28,11 @@ Registro de fecha/hora, qué se hizo, qué falló y qué se decidió. Se copia a
 - Añadido `Dockerfile`, `docker-compose.yml`, `.dockerignore` y `docker-entrypoint.sh` para la demo reproducible
   (`docker compose up --build` → http://localhost:8501).
 - Eliminado el paso obsoleto de "confirmar con la organización si se puede codificar antes del evento" (ya en competencia).
+
+## 2026-10-07 — Correcciones (guía docs/CORRECCIONES.md)
+
+| Hora (Panamá) | WP | Qué se hizo | Resultado | Qué falló / se decidió |
+| --- | --- | --- | --- | --- |
+| 10:06 | WP-0 | `.python-version=3.11`, `requires-python >=3.11,<3.13`, quitar `\|\| true` de ruff en `make check`, PDF técnico a `docs/`, `*.pdf` en raíz ignorado salvo el reto, lock regenerado | `make check` real; 57/57 en verde sobre Python 3.11.15 | — |
+| 10:06 | WP-1 | `politeness.py` (robots + pausa + evidencia http), `collect.py` (orquestador RSS→sitemap→GDELT→oficiales), `oficiales.py` (Banco Mundial cuadrícula completa, USGS, INEC/ACP/SBP manual), `rss/sitemap/html/apis` normalizados a RegistroNoticia, `cli data` real + `data-seed` protegido, `freeze` con evidencia http/manual | Recolección real orquestada; `make data` ya no genera seed | La ejecución real de scraping (WP-1.8) queda [HUMANO]; no se simuló red |
+| 10:06 | WP-1.7 | `tests/conftest.py` con `tempfile` + `FARO_DATA_DIR/FARO_DB/FARO_PERMITIR_SINTETICO`; `seed.py` con dominios `.example.invalid` y medios ficticios; `validate.py` rechaza `sintetico:true` salvo `FARO_PERMITIR_SINTETICO=1` | Las pruebas ya no pisan la base real | — |

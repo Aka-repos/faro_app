@@ -3,7 +3,7 @@ name = "faro"
 version = "0.1.0"
 description = "FARO — Copiloto de inteligencia informativa con IA (hackIAthon Panamá 4ta edición · reto TVN Media)"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
   # configuración y esquemas
   "pydantic>=2",

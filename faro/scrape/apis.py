@@ -26,7 +26,10 @@ def _iso(dt) -> str:
 def gdelt(
     query: str, start: str, end: str, domain: str | None = None, maxrec: int = 250
 ) -> list[dict]:
-    """GDELT DOC 2.0 ArtList por ventana temporal. Devuelve metadatos de enlaces."""
+    """GDELT DOC 2.0 ArtList por ventana temporal. Metadatos de enlaces (titular).
+
+    `seendate` se mapea a `fecha_deteccion`, nunca a `fecha_publicacion` (que GDELT no da).
+    """
     url = "https://api.gdeltproject.org/api/v2/doc/doc"
     params = {
         "query": query,
@@ -49,18 +52,39 @@ def gdelt(
         return []
     out = []
     for a in data.get("articles", []):
+        url_a = a.get("url", "")
+        if not url_a:
+            continue
+        seendate = a.get("seendate", "")
         out.append(
             {
-                "id": f"n-{a.get('url', '')}",
-                "titulo": a.get("title", ""),
-                "url": a.get("url", ""),
+                "tipo": "noticia",
+                "id": f"n-{_hash_url(url_a)}",
+                "fuente_id": "gdelt",
+                "titulo": a.get("title", "")[:300],
+                "url": url_a,
                 "medio": a.get("domain", ""),
-                "fecha_publicacion": a.get("seendate", ""),
-                "fecha_deteccion": a.get("seendate", ""),
+                "dominio": a.get("domain", ""),
+                "idioma": "es",
+                "fecha_publicacion": None,  # GDELT ArtList no trae fecha de publicación
+                "fecha_deteccion": seendate or None,
+                "fecha_extraccion": _iso(datetime.now(UTC)),
                 "alcance_texto": "titular",
+                "resumen": None,
+                "es_agencia": False,
+                "agencia": None,
+                "sintetico": False,
             }
         )
     return out
+
+
+def _hash_url(url: str) -> str:
+    import hashlib
+    from urllib.parse import urlparse
+
+    u = urlparse(url.strip())
+    return hashlib.sha1(f"{u.netloc.lower()}{u.path.rstrip('/')}".encode()).hexdigest()[:16]
 
 
 def banco_mundial() -> list[dict]:

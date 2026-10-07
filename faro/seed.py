@@ -61,14 +61,19 @@ EVENTOS = {
     ],
 }
 
+# Medios ficticios (WP-1.7): el seed solo existe para pruebas; nunca en la demo.
+# Dominios `.example.invalid` reservados para documentación/pruebas.
 MEDIOS = [
-    {"medio": "TVN", "dominio": "tvn-2.com"},
-    {"medio": "Telemetro", "dominio": "telemetro.com"},
-    {"medio": "Panamá América", "dominio": "panamaamerica.com.pa"},
-    {"medio": "La Prensa", "dominio": "prensa.com"},
-    {"medio": "La Estrella de Panamá", "dominio": "laestrella.com.pa"},
-    {"medio": "Metro Libre", "dominio": "metrolibre.com"},
+    {"medio": "Medio Ficticio A", "dominio": "medio-a.example.invalid"},
+    {"medio": "Medio Ficticio B", "dominio": "medio-b.example.invalid"},
+    {"medio": "Medio Ficticio C", "dominio": "medio-c.example.invalid"},
+    {"medio": "Medio Ficticio D", "dominio": "medio-d.example.invalid"},
+    {"medio": "Medio Ficticio E", "dominio": "medio-e.example.invalid"},
+    {"medio": "Medio Ficticio F", "dominio": "medio-f.example.invalid"},
 ]
+
+# El primer medio ficticio cumple el rol del "patrocinador" en los tests.
+MEDIO_PRINCIPAL = MEDIOS[0]["medio"]
 
 # Titulares adicionales de una sola fuente (para volumen, sin perder trazabilidad).
 EXTRA = {
@@ -153,9 +158,9 @@ def gen_noticias() -> list[dict]:
             fecha = _fecha_en_ventana(frac)
             es_agencia = j % 3 == 0  # ~1/3 de los eventos vienen de agencia
             agencia = RNG.choice(AGENCIAS) if es_agencia else None
-            # TVN siempre cubre (patrocinador) + 2-4 medios más.
-            otros = [m for m in MEDIOS if m["medio"] != "TVN"]
-            outlets = [next(m for m in MEDIOS if m["medio"] == "TVN")] + RNG.sample(
+            # El medio principal siempre cubre (rol "patrocinador") + 2-4 medios más.
+            otros = [m for m in MEDIOS if m["medio"] != MEDIO_PRINCIPAL]
+            outlets = [next(m for m in MEDIOS if m["medio"] == MEDIO_PRINCIPAL)] + RNG.sample(
                 otros, RNG.randint(2, 4)
             )
             for k, m in enumerate(outlets):
@@ -193,11 +198,11 @@ def gen_noticias() -> list[dict]:
         {
             "tipo": "noticia",
             "id": "n-antigua-001",
-            "fuente_id": "tvn",
+            "fuente_id": _fuente_id(MEDIO_PRINCIPAL),
             "titulo": "Panamá cierra año fiscal con superávit (recirculada)",
-            "url": "https://www.tvn-2.com/noticia/antigua-001",
-            "medio": "TVN",
-            "dominio": "tvn-2.com",
+            "url": f"https://www.{MEDIOS[0]['dominio']}/noticia/antigua-001",
+            "medio": MEDIO_PRINCIPAL,
+            "dominio": MEDIOS[0]["dominio"],
             "idioma": "es",
             "fecha_publicacion": _iso(antigua),
             "fecha_deteccion": _iso(_fecha_en_ventana(0.5)),
@@ -216,11 +221,11 @@ def gen_noticias() -> list[dict]:
         {
             "tipo": "noticia",
             "id": "n-invalida-001",
-            "fuente_id": "telemetro",
+            "fuente_id": _fuente_id(MEDIOS[1]["medio"]),
             "titulo": "Registro con fecha inválida (control T01)",
-            "url": "https://www.telemetro.com/noticia/invalida-001",
-            "medio": "Telemetro",
-            "dominio": "telemetro.com",
+            "url": f"https://www.{MEDIOS[1]['dominio']}/noticia/invalida-001",
+            "medio": MEDIOS[1]["medio"],
+            "dominio": MEDIOS[1]["dominio"],
             "idioma": "es",
             "fecha_publicacion": "no-es-una-fecha",
             "fecha_deteccion": None,
@@ -237,11 +242,11 @@ def gen_noticias() -> list[dict]:
         {
             "tipo": "noticia",
             "id": "n-nulos-001",
-            "fuente_id": "la_prensa",
+            "fuente_id": _fuente_id(MEDIOS[2]["medio"]),
             "titulo": "Registro con campos nulos (control T01)",
-            "url": "https://www.prensa.com/noticia/nulos-001",
-            "medio": "La Prensa",
-            "dominio": "prensa.com",
+            "url": f"https://www.{MEDIOS[2]['dominio']}/noticia/nulos-001",
+            "medio": MEDIOS[2]["medio"],
+            "dominio": MEDIOS[2]["dominio"],
             "idioma": "es",
             "fecha_publicacion": _iso(_fecha_en_ventana(0.6)),
             "fecha_deteccion": None,
@@ -303,13 +308,13 @@ def _gen_extra(noticias: list[dict], start: int) -> int:
 
 def _fuente_id(medio: str) -> str:
     return {
-        "TVN": "tvn",
-        "Telemetro": "telemetro",
-        "Panamá América": "panama_america",
-        "La Prensa": "la_prensa",
-        "La Estrella de Panamá": "la_estrella",
-        "Metro Libre": "metro_libre",
-    }.get(medio, "gdelt")
+        "Medio Ficticio A": "medio_a",
+        "Medio Ficticio B": "medio_b",
+        "Medio Ficticio C": "medio_c",
+        "Medio Ficticio D": "medio_d",
+        "Medio Ficticio E": "medio_e",
+        "Medio Ficticio F": "medio_f",
+    }.get(medio, "medio_x")
 
 
 def gen_series() -> list[dict]:
@@ -349,7 +354,7 @@ def gen_series() -> list[dict]:
                     "periodo": periodo,
                     "valor": valor,
                     "unidad": unidad,
-                    "url": f"https://example.org/{fuente}/{serie_id}/{periodo}",
+                    "url": f"https://datos.example.invalid/{fuente}/{serie_id}/{periodo}",
                     "pagina": None if fuente != "sbp" else RNG.randint(3, 20),
                     "fecha_extraccion": _iso(datetime.now(UTC)),
                     "condiciones": "Datos informativos y revisables; no es opinión oficial de la fuente.",
@@ -389,7 +394,7 @@ def gen_indicadores() -> list[dict]:
                         "anio": anio,
                         "valor": valor,
                         "unidad": _unidad_wb(i),
-                        "fuente_url": f"https://api.worldbank.org/v2/country/{c}/indicator/{i}",
+                        "fuente_url": f"https://datos.example.invalid/wb/{c}/{i}",
                         "fecha_extraccion": _iso(datetime.now(UTC)),
                         "licencia": "CC BY 4.0",
                         "sintetico": True,
@@ -424,7 +429,7 @@ def gen_sismos() -> list[dict]:
                     ]
                 ),
                 "status": "reviewed",
-                "url": "https://earthquake.usgs.gov/earthquakes/eventpage/sintetico",
+                "url": "https://datos.example.invalid/usgs/eventpage/sintetico",
                 "sintetico": True,
             }
         )

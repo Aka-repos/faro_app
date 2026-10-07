@@ -48,10 +48,12 @@ def test_build_produce_datos(built_db):
     assert e >= 5
 
 
-def test_tvn_minimo_20(built_db):
-    from faro import db
+def test_medio_principal_minimo_20(built_db):
+    from faro import db, seed
 
     conn = db.connect(built_db)
-    n = conn.execute("SELECT COUNT(*) c FROM noticia WHERE medio='TVN'").fetchone()[0]
+    n = conn.execute(
+        "SELECT COUNT(*) c FROM noticia WHERE medio=?", (seed.MEDIO_PRINCIPAL,)
+    ).fetchone()[0]
     conn.close()
     assert n >= 20
