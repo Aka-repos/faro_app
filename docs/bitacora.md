@@ -16,10 +16,15 @@ Registro de fecha/hora, qué se hizo, qué falló y qué se decidió. Se copia a
 | — | H9 | `faro/eval/` (benchmark, baselines, metrics) | Benchmark + métricas numerador/denominador | — |
 | — | — | `tests/` T01–T10, verifier, e2e, ui_actions, banca | Suite completa | Se correrá `make test` para cerrar compuertas |
 
-## Próximos pasos (para la hackathon)
+## Próximos pasos (en la competencia)
 
-1. Confirmar con la organización si se puede recolectar/codificar antes del evento.
-2. `FUENTES_LIVE=1 make data` + `make freeze` para el snapshot real (≥ 20 TVN, ≥ 5 medios, ≥ 1.000 noticias meta).
-3. Etiquetar ~150 titulares (`data/labels/temas.csv`) y ~50 pares para medir macro-F1 y precisión de pares.
-4. Configurar proveedor BYOK + Ollama y medir latencia/costo en el Comparador.
-5. Sincronizar fichas/decisiones/pruebas a Notion y ensayar el pitch de 10 min (uno con wifi apagado).
+1. `FUENTES_LIVE=1 make data` + `make freeze` para el snapshot real (≥ 20 TVN, ≥ 5 medios, ≥ 1.000 noticias meta).
+2. Etiquetar ~150 titulares (`data/labels/temas.csv`) y ~50 pares para medir macro-F1 y precisión de pares.
+3. Configurar proveedor BYOK + Ollama y medir latencia/costo en el Comparador.
+4. Sincronizar fichas/decisiones/pruebas a Notion y ensayar el pitch de 10 min (uno con wifi apagado).
+
+## 2026-10-06 (tarde) — Docker y limpieza
+
+- Añadido `Dockerfile`, `docker-compose.yml`, `.dockerignore` y `docker-entrypoint.sh` para la demo reproducible
+  (`docker compose up --build` → http://localhost:8501).
+- Eliminado el paso obsoleto de "confirmar con la organización si se puede codificar antes del evento" (ya en competencia).

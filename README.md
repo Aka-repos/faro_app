@@ -54,12 +54,22 @@ make verify-snapshot          # recalcula hashes y los compara
 ```bash
 make run          # Streamlit con las 7 vistas
 make test         # smoke + T01–T10 + módulos
-make check        # ruff + pytest
+make check        # ruff + pytest (compuerta de cada hito)
 make eval         # benchmark y métricas -> reports/metrics_*.json
 make eval-nlp     # clasificación vs. baseline -> reports/nlp.json
 make check-sources # robots.txt + método + volumen -> reports/fuentes_check.json
 make demo-offline  # instala en carpeta temporal, carga snapshot y arranca la demo
 ```
+
+### Docker (demo reproducible)
+
+```bash
+docker compose up --build   # construye y abre http://localhost:8501
+docker compose down         # detiene
+```
+
+La imagen trae código + dependencias y genera el snapshot al arrancar. Para el modo local con Ollama que
+corre en tu Mac, el `docker-compose.yml` ya apunta a `host.docker.internal:11434`.
 
 ## Configuración
 

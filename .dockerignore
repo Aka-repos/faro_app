@@ -1,0 +1,29 @@
+# .dockerignore — no empaquetar lo que es local o regenerable.
+.git
+.gitignore
+.venv
+.uv-cache
+.uv-python
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+
+# secretos
+.env
+
+# datos regenerables (se generan en el entrypoint)
+data/*.db
+data/*.db-*
+data/raw/*.jsonl
+data/out/*.jsonl
+data/vectores.npy
+data/vectores_idx.json
+data/cache
+data/logs
+*.npy
+
+# sistema
+.DS_Store
+docs
+kb-export

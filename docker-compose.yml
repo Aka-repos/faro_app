@@ -1,0 +1,37 @@
+# FARO — orquestación local para la demo.
+# Uso:
+#   docker compose up --build      # construye y arranca en http://localhost:8501
+#   docker compose down            # detiene
+#
+# El snapshot/DB se genera en el primer arranque. Para persistir entre arranques,
+# descomenta el volumen `./data:/app/data`.
+services:
+  faro:
+    build: .
+    container_name: faro
+    ports:
+      - "8501:8501"
+    environment:
+      # BYOK: también puedes pegar la clave directamente en la barra lateral de la UI
+      # (nunca se guarda en disco). Aquí solo como referencia, vacíos por defecto.
+      - FARO_LLM_MODO=${FARO_LLM_MODO:-auto}
+      - FARO_LLM_PROVEEDOR=${FARO_LLM_PROVEEDOR:-}
+      - FARO_LLM_MODELO=${FARO_LLM_MODELO:-}
+      - FARO_LLM_API_KEY=${FARO_LLM_API_KEY:-}
+      - FARO_LLM_BASE_URL=${FARO_LLM_BASE_URL:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - FARO_OLLAMA_MODELO=${FARO_OLLAMA_MODELO:-qwen2.5:7b-instruct}
+    # volumes:
+    #   - ./data:/app/data
+    restart: unless-stopped
+
+  # Opcional: Ollama local para el modo 100% local (L-02).
+  # Descomenta y `docker compose up -d ollama` si quieres el fallback LLM dentro de Docker.
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama:/root/.ollama
+  # volumes:
+  #   ollama:
