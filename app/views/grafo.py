@@ -117,8 +117,79 @@ def render(lente: str) -> None:
 
     aristas = [Edge(source=s, target=t, color="#B0BEC5") for s, t in G.edges()]
 
-    agraph(nodes=nodos, edges=aristas, config=_config_obsidian())
+    sel = agraph(nodes=nodos, edges=aristas, config=_config_obsidian())
 
     st.caption(
         "**Leyenda:** 🟣 agencia · 🔵 medio · 🟢 evento (suficiente) · 🟠 evento (parcial) · 🔴 evento (insuficiente) · 🩵 entidad"
     )
+
+    if sel:
+        st.divider()
+        st.markdown("#### 🔎 Detalle del nodo seleccionado")
+        _mostrar_detalle(sel, conectar())
+
+
+def _mostrar_detalle(sel: str, conn) -> None:
+    """Muestra el detalle del nodo cliqueado (sea evento, medio, agencia o entidad)."""
+    if sel.startswith("evento:"):
+        from app.db_ui import cargar_evento
+
+        ev = cargar_evento(sel.split(":", 1)[1])
+        if not ev:
+            st.info("Evento no encontrado.")
+            return
+        st.markdown(f"**{ev['titulo_canonico']}**")
+        st.write(
+            f"Tema **{ev['tema']}** · {ev['n_menciones']} menciones · {ev['n_medios']} medios · "
+            f"{ev['n_procedencias']} procedencias"
+        )
+        for p in ev["puntajes"]:
+            st.write(
+                f"Puntaje ({p['lente']}): **P={p['P']}** ({p['rango']}) · evidencia {p['estado_evidencia']}"
+            )
+        st.markdown("**Medios que lo reportan:**")
+        for n in ev["noticias"]:
+            st.markdown(
+                f"- {n['medio']}" + (f" (agencia {n['agencia']})" if n.get("agencia") else "")
+            )
+        if ev["contexto"]:
+            st.markdown("**Contexto oficial:**")
+            for c in ev["contexto"]:
+                st.markdown(f"- `{c['evidencia_id']}`")
+    elif sel.startswith("medio:"):
+        medio = sel.split(":", 1)[1]
+        n = conn.execute("SELECT COUNT(*) c FROM noticia WHERE medio=?", (medio,)).fetchone()[0]
+        temas = conn.execute(
+            "SELECT tema, COUNT(*) c FROM noticia WHERE medio=? GROUP BY tema ORDER BY c DESC LIMIT 6",
+            (medio,),
+        ).fetchall()
+        st.markdown(f"**{medio}** — {n} noticias")
+        if temas:
+            st.write("Temas: " + ", ".join(f"{t} ({c})" for t, c in temas))
+    elif sel.startswith("agencia:"):
+        agencia = sel.split(":", 1)[1]
+        n = conn.execute("SELECT COUNT(*) c FROM noticia WHERE agencia=?", (agencia,)).fetchone()[0]
+        medios = [
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT medio FROM noticia WHERE agencia=?", (agencia,)
+            ).fetchall()
+        ]
+        st.markdown(f"**{agencia}** — {n} notas replicadas por {len(medios)} medios")
+        st.write("Medios: " + ", ".join(medios))
+    elif sel.startswith("entidad:"):
+        nombre = sel.split(":", 1)[1]
+        eventos = [
+            r[0]
+            for r in conn.execute(
+                "SELECT e.titulo_canonico FROM evento_entidad ee "
+                "JOIN evento e ON e.id=ee.evento_id JOIN entidad ent ON ent.id=ee.entidad_id "
+                "WHERE ent.nombre=? LIMIT 10",
+                (nombre,),
+            ).fetchall()
+        ]
+        st.markdown(f"**{nombre}** — aparece en {len(eventos)} evento(s)")
+        for t in eventos:
+            st.markdown(f"- {t}")
+    else:
+        st.info("Nodo sin detalle disponible.")

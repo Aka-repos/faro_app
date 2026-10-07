@@ -117,6 +117,17 @@ def ranking(conn, lente="editorial", n=5) -> list[dict]:
     return rows
 
 
+def ejemplo_replicacion(conn) -> dict:
+    """Devuelve las procedencias de un evento donde una agencia es replicada (CU-03)."""
+    row = conn.execute(
+        "SELECT DISTINCT en.evento_id FROM evento_noticia en "
+        "JOIN noticia n ON n.id=en.noticia_id WHERE n.agencia IS NOT NULL LIMIT 1"
+    ).fetchone()
+    if not row:
+        return {"evento_id": None, "n_menciones": 0, "n_medios": 0, "n_procedencias": 0}
+    return ver_procedencias(conn, row[0])
+
+
 # Registro de herramientas disponibles (para el agente y para la UI).
 HERRAMIENTAS = {
     "buscar_noticias": buscar_noticias,
@@ -127,4 +138,5 @@ HERRAMIENTAS = {
     "consultar_sbp": consultar_sbp,
     "buscar_sismos": buscar_sismos,
     "ranking": ranking,
+    "ejemplo_replicacion": ejemplo_replicacion,
 }

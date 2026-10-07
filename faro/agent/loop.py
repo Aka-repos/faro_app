@@ -9,6 +9,7 @@ por palabras clave cuando no hay LLM disponible (el gateway ya degrada a extract
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import time
 
@@ -18,23 +19,139 @@ from faro.events.contradict import detectar_contradicciones
 _MAX_PASOS = 6
 _BUDGET_S = 15.0
 
+_RESPUESTA_META = (
+    "Soy **FARO**, un copiloto de inteligencia informativa para el editor de TVN. "
+    "Sobre el corpus de noticias y datos oficiales de Panamá puedo:\n"
+    "- Darte el **top de temas** que merecen revisión (ej. *¿Qué cinco temas merecen revisión hoy?*).\n"
+    "- **Abrir un evento** y contar sus fuentes independientes (procedencias).\n"
+    "- **Consultar indicadores** del Banco Mundial (país, año y unidad) y **series oficiales** "
+    "(INEC, ACP, SBP).\n"
+    "- **Buscar sismos** (USGS) y **detectar contradicciones** entre cifras.\n"
+    "- **Abstenerme** si no hay evidencia, en vez de inventar.\n\n"
+    'Prueba preguntándome: *"¿Cuál fue el crecimiento del PIB de Panamá?"* o *"¿Qué temas son tendencia?"*'
+)
+
+_RESPUESTA_SEGURIDAD = (
+    "En FARO la seguridad está en el código, no en instrucciones al modelo:\n"
+    "- **Sin evidencia → abstención.** Si no hay un dato que respalde la respuesta, no invento "
+    "cifras ni citas; digo qué falta verificar.\n"
+    "- **Fuente que cambia instrucciones → se trata como dato.** El contenido de las fuentes se "
+    "delimita como dato y pasa por un escudo anti-inyección con clave canario; nunca modifica mi "
+    "comportamiento ni revela secretos.\n"
+    "- **Prioridad ≠ verdad.** El estado de evidencia es independiente del puntaje; aprobar un "
+    "borrador no publica nada.\n\n"
+    "Puedes verlo en vivo pidiéndome una cifra inexistente o con la prueba T07."
+)
+
+
+_STOPWORDS = {
+    "que",
+    "qué",
+    "cual",
+    "cuál",
+    "cuales",
+    "cuáles",
+    "es",
+    "son",
+    "hay",
+    "la",
+    "el",
+    "los",
+    "las",
+    "de",
+    "del",
+    "para",
+    "por",
+    "en",
+    "un",
+    "una",
+    "unos",
+    "unas",
+    "hoy",
+    "me",
+    "te",
+    "se",
+    "lo",
+    "mi",
+    "tu",
+    "deberia",
+    "debería",
+    "puedo",
+    "puedes",
+    "podria",
+    "podría",
+    "tema",
+    "temas",
+    "importancia",
+    "tendencia",
+    "tendencias",
+    "como",
+    "cómo",
+    "cuando",
+    "cuándo",
+    "donde",
+    "dónde",
+    "porque",
+    "porqué",
+    "cualquier",
+    "otra",
+    "otro",
+    "dime",
+    "decir",
+}
+
+_META_RE = re.compile(
+    r"qu[eé]\s*sabes|qu[eé]\s*puedes|qui[eé]n\s*eres|ayuda|help|capacidades|qu[eé]\s*haces", re.I
+)
+
+_SEGURIDAD_RE = re.compile(
+    r"no\s*tiene\s*evidencia|sin\s*evidencia|cambiar\s*(sus\s*)?instrucciones|inyecc|"
+    r"ignorar\s*instrucciones|qu[eé]\s*ocurre\s*si",
+    re.I,
+)
+
+
+def _extraer_terminos(p: str) -> str:
+    palabras = [w for w in re.split(r"\W+", p) if len(w) > 2 and w not in _STOPWORDS]
+    return " ".join(palabras[:4])
+
 
 def _planificar(pregunta: str) -> list[tuple[str, dict]]:
     """Enrutador determinístico: pregunta -> lista de herramientas (nombre, args)."""
     p = pregunta.lower()
     plan: list[tuple[str, dict]] = []
 
-    if "procedencia" in p or "cuántas fuentes" in p or "cuántos medios" in p or "replican" in p:
-        plan.append(("ranking", {"lente": "editorial", "n": 1}))
-        plan.append(("ver_procedencias", {"evento_id": None}))  # se resuelve tras el ranking
+    if _META_RE.search(p):
+        plan.append(("_meta", {}))
+        return plan
+    if _SEGURIDAD_RE.search(p):
+        plan.append(("_seguridad", {}))
+        return plan
+    # Año concreto fuera del rango de datos -> abstenerse sin inventar (T06).
+    m = re.search(r"\b(19\d{2}|20\d{2})\b", p)
+    if m and (int(m.group(1)) < 2010 or int(m.group(1)) > 2026):
+        plan.append(("_sin_datos", {"anio": int(m.group(1))}))
+        return plan
+    if (
+        "procedencia" in p
+        or "fuentes independientes" in p
+        or "replican" in p
+        or "cuántas fuentes" in p
+        or "cuántos medios" in p
+    ):
+        plan.append(("ejemplo_replicacion", {}))
     elif "sismo" in p or "terremoto" in p or "magnitud" in p:
         plan.append(("buscar_sismos", {"mag_min": 3.0}))
     elif (
         "pib" in p
         or "inflación" in p
+        or "inflacion" in p
         or "desempleo" in p
         or "indicador" in p
         or "banco mundial" in p
+        or "crecimiento" in p
+        or "econom" in p
+        or ("cifra" in p and ("proviene" in p or "año" in p or "fuente" in p or "dónde viene" in p))
     ):
         ind = "NY.GDP.MKTP.KD.ZG"
         if "inflación" in p or "inflacion" in p:
@@ -44,21 +161,39 @@ def _planificar(pregunta: str) -> list[tuple[str, dict]]:
         plan.append(("consultar_indicador", {"pais": "PAN", "indicador": ind}))
     elif "sbp" in p or "depósito" in p or "credito" in p or "crédito" in p or "liquidez" in p:
         plan.append(("consultar_sbp", {}))
-    elif "canal" in p or "buque" in p or "transito" in p or "tránsito" in p or "tonelaje" in p:
+    elif (
+        "canal" in p
+        or "buque" in p
+        or "transito" in p
+        or "tránsito" in p
+        or "tonelaje" in p
+        or "puerto" in p
+        or "logístic" in p
+    ):
         plan.append(("consultar_serie", {"fuente": "acp"}))
-    elif "serie" in p or "imae" in p or "visitante" in p or "ipc" in p:
+    elif "turis" in p or "visitante" in p:
+        plan.append(("consultar_serie", {"fuente": "inec", "serie": "inec_visitantes"}))
+    elif "serie" in p or "imae" in p or "ipc" in p:
         plan.append(("consultar_serie", {}))
     elif (
-        "top" in p
+        "tendencia" in p
+        or "importancia" in p
+        or "agenda" in p
+        or "merecen" in p
+        or "top" in p
         or "ranking" in p
         or "cinco" in p
         or "5 temas" in p
         or "bandeja" in p
         or "prioridad" in p
+        or "revisar" in p
+        or "revisión" in p
+        or re.search(r"\btemas?\b", p)
     ):
         plan.append(("ranking", {"lente": "editorial", "n": 5}))
     else:
-        plan.append(("buscar_noticias", {"q": pregunta[:40], "limite": 10}))
+        q = _extraer_terminos(p)
+        plan.append(("buscar_noticias", {"q": q or pregunta[:40], "limite": 10}))
     return plan
 
 
@@ -95,6 +230,44 @@ def consultar(
     traza: list[dict] = []
     plan = _planificar(pregunta)
     resultados: list[dict] = []
+
+    # Pregunta meta/capacidades: se responde sin tocar herramientas.
+    if plan and plan[0][0] == "_meta":
+        traza.append({"paso": 1, "herramienta": "_meta", "n_resultados": 1})
+        return {
+            "respuesta": _RESPUESTA_META,
+            "abstencion": False,
+            "acciones": [],
+            "traza": traza,
+            "resultados": [],
+        }
+
+    # Pregunta sobre comportamiento seguro: se responde sin tocar herramientas.
+    if plan and plan[0][0] == "_seguridad":
+        traza.append({"paso": 1, "herramienta": "_seguridad", "n_resultados": 1})
+        return {
+            "respuesta": _RESPUESTA_SEGURIDAD,
+            "abstencion": False,
+            "acciones": [],
+            "traza": traza,
+            "resultados": [],
+        }
+
+    # Año fuera del corpus: abstención explícita.
+    if plan and plan[0][0] == "_sin_datos":
+        anio = plan[0][1]["anio"]
+        traza.append({"paso": 1, "herramienta": "_sin_datos", "n_resultados": 0})
+        return {
+            "respuesta": (
+                f"No hay datos del año {anio} en el corpus (noticias 2025-2026, indicadores "
+                "Banco Mundial 2010-2024, series 2025-2026, sismos 2024-2026). "
+                "Falta: evidencia de ese año."
+            ),
+            "abstencion": True,
+            "acciones": [],
+            "traza": traza,
+            "resultados": [],
+        }
 
     for paso, (nombre, args) in enumerate(plan[:_MAX_PASOS], start=1):
         if time.time() - t0 > _BUDGET_S:
@@ -158,25 +331,7 @@ def _formatear(pregunta: str, resultados: list[dict], conn, lente) -> tuple[str,
                 False,
             )
 
-    # Ranking / top (CU-01). Formato compacto: el desglose R/I/U/N/E va en la traza.
-    ranking = [r for r in resultados if isinstance(r, dict) and "P" in r]
-    if (
-        "top" in p
-        or "cinco" in p
-        or "5 temas" in p
-        or "ranking" in p
-        or "bandeja" in p
-        or "prioridad" in p
-    ) and ranking:
-        lineas = []
-        for i, r in enumerate(ranking[:5], start=1):
-            lineas.append(
-                f"{i}. **{r.get('titulo_canonico', '')}** · P={r['P']} ({r['rango']}) · "
-                f"evidencia {r['estado_evidencia']}"
-            )
-        return "Los cinco temas que merecen revisión hoy:\n" + "\n".join(lineas), False
-
-    # Procedencias (CU-03).
+    # Procedencias (CU-03) — antes que ranking, para "5 medios replican una agencia".
     if any(isinstance(r, dict) and r.get("n_procedencias") is not None for r in resultados):
         r = [x for x in resultados if isinstance(x, dict) and "n_procedencias" in x][0]
         return (
@@ -185,6 +340,32 @@ def _formatear(pregunta: str, resultados: list[dict], conn, lente) -> tuple[str,
             "Una agencia replicada cuenta como una sola fuente.",
             False,
         )
+
+    # Ranking / top (CU-01). Formato compacto: el desglose R/I/U/N/E va en la traza.
+    ranking = [r for r in resultados if isinstance(r, dict) and "P" in r]
+    _rank_kw = (
+        "top",
+        "cinco",
+        "5 temas",
+        "ranking",
+        "bandeja",
+        "prioridad",
+        "tendencia",
+        "importancia",
+        "agenda",
+        "hoy",
+        "revisar",
+        "revisión",
+        "merecen",
+    )
+    if (any(k in p for k in _rank_kw) or re.search(r"\btemas?\b", p)) and ranking:
+        lineas = []
+        for i, r in enumerate(ranking[:5], start=1):
+            lineas.append(
+                f"{i}. **{r.get('titulo_canonico', '')}** · P={r['P']} ({r['rango']}) · "
+                f"evidencia {r['estado_evidencia']}"
+            )
+        return "Los cinco temas que merecen revisión hoy:\n" + "\n".join(lineas), False
 
     # Indicadores (T04, CU-02).
     if any(isinstance(r, dict) and "indicador_id" in r for r in resultados):
