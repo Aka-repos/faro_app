@@ -158,7 +158,7 @@ def _formatear(pregunta: str, resultados: list[dict], conn, lente) -> tuple[str,
                 False,
             )
 
-    # Ranking / top (CU-01).
+    # Ranking / top (CU-01). Formato compacto: el desglose R/I/U/N/E va en la traza.
     ranking = [r for r in resultados if isinstance(r, dict) and "P" in r]
     if (
         "top" in p
@@ -169,10 +169,10 @@ def _formatear(pregunta: str, resultados: list[dict], conn, lente) -> tuple[str,
         or "prioridad" in p
     ) and ranking:
         lineas = []
-        for r in ranking[:5]:
+        for i, r in enumerate(ranking[:5], start=1):
             lineas.append(
-                f"- {r.get('titulo_canonico', '')} · P={r['P']} ({r['rango']}) · "
-                f"evidencia {r['estado_evidencia']} · R={r['R']} I={r['I']} U={r['U']} N={r['N']} E={r['E']}"
+                f"{i}. **{r.get('titulo_canonico', '')}** · P={r['P']} ({r['rango']}) · "
+                f"evidencia {r['estado_evidencia']}"
             )
         return "Los cinco temas que merecen revisión hoy:\n" + "\n".join(lineas), False
 

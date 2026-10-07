@@ -31,6 +31,15 @@ def _log(entry: dict) -> None:
         fh.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
 
 
+def log_ejecucion(entry: dict) -> None:
+    """Registra una ejecución (agente o generación) en data/logs/llm.jsonl.
+
+    Es la misma fuente que lee la vista Comparador, así que cada consulta del
+    agente aparece tanto en el Agente como en el Comparador.
+    """
+    _log(entry)
+
+
 def detectar_capacidades(proveedor: str, modelo: str, api_key: str) -> dict:
     """Sondeo corto de capacidades (sección 7.1). Devuelve flags por capacidad."""
     caps = {"json_esquema": None, "herramientas": None, "precio_conocido": False}
