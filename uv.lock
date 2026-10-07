@@ -580,16 +580,14 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rapidfuzz" },
     { name = "scikit-learn" },
+    { name = "sentence-transformers" },
+    { name = "spacy" },
     { name = "streamlit" },
     { name = "streamlit-agraph" },
     { name = "trafilatura" },
 ]
 
 [package.optional-dependencies]
-ml = [
-    { name = "sentence-transformers" },
-    { name = "spacy" },
-]
 scrapling = [
     { name = "scrapling" },
 ]
@@ -616,13 +614,13 @@ requires-dist = [
     { name = "rapidfuzz" },
     { name = "scikit-learn" },
     { name = "scrapling", marker = "extra == 'scrapling'" },
-    { name = "sentence-transformers", marker = "extra == 'ml'" },
-    { name = "spacy", marker = "extra == 'ml'" },
+    { name = "sentence-transformers" },
+    { name = "spacy" },
     { name = "streamlit" },
     { name = "streamlit-agraph" },
     { name = "trafilatura" },
 ]
-provides-extras = ["ml", "scrapling"]
+provides-extras = ["scrapling"]
 
 [package.metadata.requires-dev]
 dev = [

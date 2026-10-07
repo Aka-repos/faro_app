@@ -223,9 +223,51 @@ def _acciones(pregunta: str, resultados: list[dict]) -> list[dict]:
 
 
 def consultar(
+    pregunta: str,
+    conn: sqlite3.Connection,
+    lente: str = "editorial",
+    contexto: dict | None = None,
+    llm_cfg: dict | None = None,
+) -> dict:
+    """Consulta al agente: usa el LLM si hay proveedor con herramientas; si no, el determinista."""
+    llm_cfg = llm_cfg or {}
+    if llm_cfg.get("proveedor") and llm_cfg.get("modelo"):
+        try:
+            from faro.agent.loop_llm import consultar_llm
+
+            return consultar_llm(pregunta, conn, lente=lente, contexto=contexto, llm_cfg=llm_cfg)
+        except Exception as e:  # noqa: BLE001
+            # Degradación a determinista si el LLM falla (D-06).
+            r = consultar_determinista(pregunta, conn, lente=lente, contexto=contexto)
+            r["meta"] = {
+                "proveedor": "deterministico",
+                "modelo": "enrutador",
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "costo_usd": 0.0,
+                "latencia_ms": 0,
+                "error_llm": str(e)[:120],
+            }
+            return r
+    r = consultar_determinista(pregunta, conn, lente=lente, contexto=contexto)
+    r.setdefault(
+        "meta",
+        {
+            "proveedor": "deterministico",
+            "modelo": "enrutador",
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "costo_usd": 0.0,
+            "latencia_ms": 0,
+        },
+    )
+    return r
+
+
+def consultar_determinista(
     pregunta: str, conn: sqlite3.Connection, lente: str = "editorial", contexto: dict | None = None
 ) -> dict:
-    """Ejecuta la consulta del agente y devuelve {respuesta, acciones, traza, abstencion}."""
+    """Ejecuta la consulta del agente (enrutador determinista) y devuelve el resultado."""
     t0 = time.time()
     traza: list[dict] = []
     plan = _planificar(pregunta)

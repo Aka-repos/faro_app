@@ -23,6 +23,7 @@ except Exception:  # noqa: BLE001
     _ST = False
 
 _MODEL_NAME = "intfloat/multilingual-e5-small"
+EMBEDDER_NAME = _MODEL_NAME
 _DIM_FALLBACK = 384
 
 
@@ -43,12 +44,19 @@ def _fallback_embed(text: str, dim: int = _DIM_FALLBACK) -> np.ndarray:
 
 
 class Embedder:
-    def __init__(self) -> None:
+    """e5-small (obligatorio fuera de tests, D-11). El fallback por hashing solo en tests."""
+
+    def __init__(self, require_model: bool = True) -> None:
         self._model = None
         if _ST:
             try:
                 self._model = SentenceTransformer(_MODEL_NAME)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                if require_model and not S.PERMITIR_FALLBACK:
+                    raise RuntimeError(
+                        f"No se pudo cargar {_MODEL_NAME}. Corre `make setup` con red o "
+                        f"fija FARO_PERMITIR_FALLBACK=1 solo para pruebas. Detalle: {e}"
+                    ) from e
                 self._model = None
         self.nombre = _MODEL_NAME if self._model is not None else "hash-ngram-fallback"
 
@@ -61,6 +69,8 @@ class Embedder:
                 show_progress_bar=False,
             )
             return np.asarray(vecs, dtype=np.float32)
+        if not S.PERMITIR_FALLBACK:
+            raise RuntimeError("Embedder sin modelo y fallback deshabilitado (WP-2).")
         return np.stack([_fallback_embed(t) for t in textos])
 
 

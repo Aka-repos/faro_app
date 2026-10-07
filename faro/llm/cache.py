@@ -11,8 +11,29 @@ import config.settings as S
 _CACHE_DIR = S.DATA_DIR / "cache"
 
 
-def cache_key(prompt_version: str, lente: str, ids_evidencia: list[str], modelo: str) -> str:
-    raw = json.dumps([prompt_version, lente, sorted(ids_evidencia), modelo], sort_keys=True)
+def cache_key(
+    prompt_version: str,
+    lente: str,
+    ids_evidencia: list[str],
+    modelo: str,
+    mensajes: list[dict] | None = None,
+    tools: list[str] | None = None,
+) -> str:
+    """Clave de caché que incluye el contenido de los mensajes (WP-4.1).
+
+    Antes dos preguntas distintas sobre el mismo evento devolvían la misma respuesta.
+    """
+    raw = json.dumps(
+        [
+            prompt_version,
+            lente,
+            sorted(ids_evidencia),
+            modelo,
+            json.dumps(mensajes or [], sort_keys=True),
+            sorted(tools or []),
+        ],
+        sort_keys=True,
+    )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 

@@ -59,9 +59,14 @@ def render(lente: str) -> None:
     # Ejecutar y medir.
     conn = db.connect()
     t0 = time.perf_counter()
+    llm_cfg = st.session_state.get("llm", {})
     try:
         r = loop.consultar(
-            pregunta, conn, lente=lente, contexto={"vista": "Agente", "lente": lente}
+            pregunta,
+            conn,
+            lente=lente,
+            contexto={"vista": "Agente", "lente": lente},
+            llm_cfg=llm_cfg,
         )
     except Exception as e:  # noqa: BLE001
         conn.close()
@@ -73,21 +78,29 @@ def render(lente: str) -> None:
     conn.close()
 
     contenido = ("⚠️ **Abstención:** " + r["respuesta"]) if r["abstencion"] else r["respuesta"]
-    meta = {
-        "latencia_ms": latencia_ms,
-        "proveedor": "deterministico",
-        "modelo": "enrutador",
-        "pasos": len(r["traza"]),
-        "lente": lente,
-        "tokens_in": 0,
-        "tokens_out": 0,
-        "costo_usd": 0.0,
-    }
+    # meta real del LLM (proveedor, modelo, tokens, costo) si está; si no, determinista.
+    meta = r.get("meta") or {}
+    meta.setdefault("latencia_ms", latencia_ms)
+    meta.setdefault("proveedor", "deterministico")
+    meta.setdefault("modelo", "enrutador")
+    meta["pasos"] = len(r.get("traza", []))
+    meta["lente"] = lente
 
     # Registrar en data/logs/llm.jsonl para que también aparezca en el Comparador.
     log_ejecucion(
         {
-            **meta,
+            **{
+                k: meta.get(k, 0)
+                for k in (
+                    "proveedor",
+                    "modelo",
+                    "tokens_in",
+                    "tokens_out",
+                    "costo_usd",
+                    "latencia_ms",
+                )
+            },
+            "lente": lente,
             "citas_validas": 0 if r["abstencion"] else 1,
             "citas_total": 1,
             "abstuvo": int(r["abstencion"]),
@@ -95,6 +108,6 @@ def render(lente: str) -> None:
     )
 
     st.session_state[_MSGS].append(
-        {"role": "assistant", "content": contenido, "meta": meta, "traza": r["traza"]}
+        {"role": "assistant", "content": contenido, "meta": meta, "traza": r.get("traza", [])}
     )
     st.rerun()

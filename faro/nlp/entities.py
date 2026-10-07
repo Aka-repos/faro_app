@@ -1,12 +1,13 @@
-"""Entidades (F-04): personas, organizaciones y lugares; agencia y acusación.
+"""Entidades (F-04): spaCy ``es_core_news_md`` obligatorio (D-11).
 
-Usa spaCy ``es_core_news_md`` si está disponible; si no, cae a un extractor por
-expresiones regulares y diccionarios (offline, sin descargas).
+El extractor por regex es solo respaldo de tests (`FARO_PERMITIR_FALLBACK=1`).
 """
 
 from __future__ import annotations
 
 import re
+
+import config.settings as S
 
 try:
     import spacy  # type: ignore
@@ -62,7 +63,12 @@ def _nlp():
         try:
             _NLP = spacy.load("es_core_news_md")
             return _NLP
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            if not S.PERMITIR_FALLBACK:
+                raise RuntimeError(
+                    f"No se pudo cargar es_core_news_md. Corre `make setup` con red o "
+                    f"fija FARO_PERMITIR_FALLBACK=1 solo para pruebas. Detalle: {e}"
+                ) from e
             _NLP = None
     return _NLP
 
@@ -77,6 +83,7 @@ def extraer_entidades(texto: str) -> list[dict]:
             if ent.label_ in ("PER", "ORG", "LOC"):
                 out.append({"nombre": ent.text, "tipo": ent.label_})
     else:
+        # Respaldo solo para tests (WP-2).
         for m in _PERSONA.finditer(texto):
             out.append({"nombre": m.group(0), "tipo": "PER"})
         for org in _ORGS:

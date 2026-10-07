@@ -20,6 +20,9 @@ dependencies = [
   # NLP ligero (embeddings de respaldo y métricas)
   "rapidfuzz",
   "scikit-learn",
+  # NLP (obligatorio, D-11): embeddings y entidades reales
+  "sentence-transformers",
+  "spacy",
   # LLM
   "litellm",
   # interfaz y grafo
@@ -30,13 +33,8 @@ dependencies = [
   "notion-client",
 ]
 
-# Dependencias pesadas / que descargan modelos: opcionales para que `make setup`
-# sea rápido y funcione sin red. faro/nlp y faro/llm degradan con gracia si faltan.
+# Scrapling: opcional, solo si un medio exige modo sigiloso.
 [project.optional-dependencies]
-ml = [
-  "sentence-transformers",
-  "spacy",
-]
 scrapling = [
   "scrapling",
 ]

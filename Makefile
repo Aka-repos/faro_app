@@ -6,10 +6,12 @@ UV := uv
 
 .PHONY: setup data data-seed freeze verify-snapshot build run test eval eval-nlp check check-sources demo-offline clean
 
-## Instala dependencias (uv sync) y precarga config mínima.
+## Instala dependencias (uv sync), precarga e5-small y el modelo de spaCy (offline).
 setup:
 	$(UV) sync
 	$(PY) -c "from config import settings; settings.ensure_dirs()"
+	$(UV) run python -m spacy download es_core_news_md
+	$(PY) -c "from faro.nlp.embed import Embedder; Embedder(require_model=True).encode(['ok']); print('e5-small OK')"
 	@echo "setup OK"
 
 ## Recolecta el snapshot REAL (RSS, sitemaps, GDELT, Banco Mundial, USGS, INEC/ACP/SBP).

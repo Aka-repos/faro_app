@@ -200,10 +200,14 @@ def reportes(conn, ingesta_res: dict, deducir_res: dict) -> dict:
     S.ensure_dirs()
     fuentes = db.fetchall(conn, "SELECT COUNT(*) c FROM noticia GROUP BY medio")
     ranking = tools.ranking(conn, "editorial", 10)
+    from faro.nlp.embed import EMBEDDER_NAME
+
     calidad = {
         "generado": datetime.now(UTC).isoformat(),
         "conteos": ingesta_res,
         "medios_distintos": len(fuentes),
+        "embedder": EMBEDDER_NAME,
+        "ner": "es_core_news_md",
         "noticias_tvn": db.fetchall(conn, "SELECT COUNT(*) c FROM noticia WHERE medio='TVN'")[0][
             "c"
         ],

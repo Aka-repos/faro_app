@@ -51,8 +51,24 @@ with st.sidebar:
         api_key = st.text_input(
             "API key", type="password", help="Vive solo en st.session_state; nunca en disco."
         )
-        if api_key:
-            st.session_state["faro_api_key"] = api_key
+        base_url = st.text_input(
+            "Base URL (opcional)", placeholder="solo endpoints compatibles OpenAI"
+        )
+
+    # La clave y el proveedor viven solo en st.session_state (nunca en disco, D-12).
+    st.session_state["llm"] = {
+        "proveedor": proveedor.strip() or None,
+        "modelo": modelo.strip() or None,
+        "api_key": api_key.strip() or None,
+        "base_url": base_url.strip() or None,
+        "modo": modo,
+    }
+    if st.session_state["llm"]["proveedor"] and st.session_state["llm"]["modelo"]:
+        st.caption(f"🟢 Modo activo: modelo del usuario ({st.session_state['llm']['proveedor']})")
+    elif modo == "local":
+        st.caption("🟡 Modo activo: local (Ollama)")
+    else:
+        st.caption("🟠 Modo activo: respaldo determinista (sin LLM configurado)")
     st.caption("Fecha de referencia: 2026-09-30 23:59 (Panamá)")
 
     if not db_existe():

@@ -59,6 +59,18 @@ USER_AGENT = (
     "respeta robots.txt y pausa por dominio)"
 )
 
+# --- NLP / modelos (WP-2) ---------------------------------------------------
+# Cache de modelos en data/cache/hf para que la demo funcione sin red (T10).
+HF_HOME = DATA_DIR / "cache" / "hf"
+os.environ.setdefault("HF_HOME", str(HF_HOME))
+if _env("HF_HUB_OFFLINE") == "1":
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+# Permite el fallback por hashing de n-gramas / regex solo en tests.
+PERMITIR_FALLBACK = _env("FARO_PERMITIR_FALLBACK") == "1"
+PERMITIR_SINTETICO = _env("FARO_PERMITIR_SINTETICO") == "1"
+
 # --- LLM -------------------------------------------------------------------
 LLM_MODO = _env("FARO_LLM_MODO", "auto")
 LLM_PROVEEDOR = _env("FARO_LLM_PROVEEDOR")
