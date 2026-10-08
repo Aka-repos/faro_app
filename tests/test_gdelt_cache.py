@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime
 
 import config.settings as S
@@ -44,6 +45,7 @@ def test_recolectar_gdelt_salta_cache(monkeypatch, tmp_path):
 
 def test_error_no_se_cachea(monkeypatch, tmp_path):
     monkeypatch.setattr(collect, "_GDELT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(time, "sleep", lambda s: None)  # evita el 120 s real del punto 3
 
     def _fake_gdelt(q, ini, fin, maxrec=250, client=None):
         return [], "HTTP 429 tras 3 intentos"
@@ -93,3 +95,22 @@ def test_recolectar_gdelt_solo_rearma_noticias(monkeypatch, tmp_path):
     assert "https://gdelt/nueva" in urls  # GDELT nueva entra
     assert "https://gdelt/vieja" not in urls  # GDELT vieja se reemplaza
     assert res["conteos"]["nuevas_gdelt"] == 1
+
+
+def test_gdelt_429_espera_120s_y_reintenta(monkeypatch, tmp_path):
+    monkeypatch.setattr(collect, "_GDELT_CACHE_DIR", tmp_path)
+    llamadas: list[str] = []
+    sleeps: list[float] = []
+
+    def _fake_gdelt(q, ini, fin, maxrec=250, client=None):
+        llamadas.append(q)
+        return [], "HTTP 429 tras 3 intentos"
+
+    monkeypatch.setattr(collect.apis, "gdelt", _fake_gdelt)
+    monkeypatch.setattr(time, "sleep", lambda s: sleeps.append(s))
+    _noticias, g = collect._recolectar_gdelt(datetime(2025, 10, 1), datetime(2025, 11, 1))
+
+    n = len(_queries_mes())
+    assert len(llamadas) == 2 * n  # una inicial + una tras 120 s por consulta
+    assert 120 in sleeps
+    assert g["errores"] == n

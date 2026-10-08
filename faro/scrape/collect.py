@@ -370,10 +370,12 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
     Una corrida interrumpida o con 429 se completa re-ejecutando: las consultas ya
     cacheadas se saltan sin repetir la petición.
     """
+    import time as _time
+
     g = {"intentos": 0, "ok": 0, "errores": 0, "desde_cache": 0, "detalle": []}
     keywords = load_keywords()["temas"]
     temas_consulta = [f"({(' OR '.join(palabras[:3]))})" for _tema, palabras in keywords.items()]
-    gclient = politeness.PoliteClient(rate_limit_s=6.0)
+    gclient = politeness.PoliteClient(rate_limit_s=10.0)
     noticias: list[dict] = []
     for ini, fin in _meses(desde, hasta):
         mes = ini[:6]
@@ -392,6 +394,12 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
                 continue
             g["intentos"] += 1
             filas, error = apis.gdelt(q, ini, fin, maxrec=250, client=gclient)
+            if error and "429" in error:
+                # Punto 3: esperar 120 s una sola vez y reintentar antes de darla por fallida.
+                print(f"    gdelt {mes} '{q[:40]}': 429 persistente, esperando 120 s...")
+                _time.sleep(120)
+                g["intentos"] += 1
+                filas, error = apis.gdelt(q, ini, fin, maxrec=250, client=gclient)
             if error:
                 g["errores"] += 1
                 g["detalle"].append({"mes": mes, "query": q, "ok": False, "error": error})
