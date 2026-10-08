@@ -106,6 +106,12 @@ def ingesta(conn) -> dict:
             n["tema"] = classify.clasificar_baseline(n["titulo"])
             n["tema_conf"] = None
 
+    # Limpiar la Capa 1 antes de cargar (evita filas obsoletas de builds previos;
+    # cuarentena usa AUTOINCREMENT y antes se acumulaba).
+    for t in ("noticia", "serie_oficial", "indicador", "sismo", "cuarentena"):
+        conn.execute(f"DELETE FROM {t}")
+    conn.commit()
+
     db.upsert(conn, "noticia", validados["noticia"])
     db.upsert(conn, "serie_oficial", validados["serie_oficial"])
     db.upsert(conn, "indicador", validados["indicador"])
