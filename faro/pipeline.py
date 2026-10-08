@@ -229,14 +229,20 @@ def deducir(conn) -> dict:
 def reportes(conn, ingesta_res: dict, deducir_res: dict) -> dict:
     """Genera reports (calidad, ranking, manifest)."""
     S.ensure_dirs()
-    fuentes = db.fetchall(conn, "SELECT COUNT(*) c FROM noticia GROUP BY medio")
-    ranking = tools.ranking(conn, "editorial", 10)
     from faro.nlp.embed import EMBEDDER_NAME
+    from faro.scrape.medios import es_institucional
+
+    # Medios periodísticos distintos vs. fuentes institucionales (.gob.pa).
+    filas_medio = db.fetchall(conn, "SELECT DISTINCT medio, dominio FROM noticia")
+    medios_periodisticos = {r["medio"] for r in filas_medio if not es_institucional(r["dominio"])}
+    medios_institucionales = {r["medio"] for r in filas_medio if es_institucional(r["dominio"])}
+    ranking = tools.ranking(conn, "editorial", 10)
 
     calidad = {
         "generado": datetime.now(UTC).isoformat(),
         "conteos": ingesta_res,
-        "medios_distintos": len(fuentes),
+        "medios_distintos": len(medios_periodisticos),
+        "institucionales": len(medios_institucionales),
         "embedder": EMBEDDER_NAME,
         "ner": "es_core_news_md",
         "noticias_tvn": db.fetchall(conn, "SELECT COUNT(*) c FROM noticia WHERE fuente_id='tvn'")[

@@ -7,6 +7,8 @@ solo si son dominios distintos y no son casi-duplicados de una misma agencia.
 
 from __future__ import annotations
 
+from faro.scrape.medios import es_institucional
+
 
 def procedencias_de_evento(noticias: list[dict]) -> dict:
     """Dado las noticias de un evento, devuelve el desglose de procedencias."""
@@ -16,13 +18,15 @@ def procedencias_de_evento(noticias: list[dict]) -> dict:
     sin_agencia: set[str] = set()
 
     for nc in noticias:
-        medios.add(nc["medio"])
         dominios.add(nc.get("dominio", ""))
         ag = nc.get("agencia")
         if ag:
             agencias.add(ag)
         else:
             sin_agencia.add(nc["medio"])
+        # Las fuentes institucionales (.gob.pa) cuentan como procedencia pero no como medio.
+        if not es_institucional(nc.get("dominio", "")):
+            medios.add(nc["medio"])
 
     # Cada agencia cuenta como una procedencia; cada medio sin agencia también.
     procedencias = sorted(agencias) + sorted(sin_agencia)

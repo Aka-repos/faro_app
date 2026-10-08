@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from faro.scrape.medios import normalizar_medio
+from faro.events.provenance import procedencias_de_evento
+from faro.scrape.medios import es_institucional, normalizar_medio
 
 
 def test_tvn_por_dominio():
@@ -16,3 +17,28 @@ def test_dominio_desconocido_none():
 
 def test_dominio_vacio_none():
     assert normalizar_medio("") is None
+
+
+def test_nombres_legibles_medios_adicionales():
+    assert normalizar_medio("critica.com.pa") == ("critica", "Crítica")
+    assert normalizar_medio("diaadia.com.pa") == ("diaadia", "Día a Día")
+    assert normalizar_medio("midiario.com") == ("midiario", "Mi Diario")
+    assert normalizar_medio("www.rpctv.com") == ("rpc", "RPC")  # subdominio
+    assert normalizar_medio("revistasumma.com") == ("revistasumma", "Revista Summa")
+
+
+def test_institucional_gob_pa():
+    assert es_institucional("mire.gob.pa") is True
+    assert es_institucional("asamblea.gob.pa") is True
+    assert es_institucional("critica.com.pa") is False
+
+
+def test_institucional_no_cuenta_como_medio_pero_si_procedencia():
+    noticias = [
+        {"medio": "TVN Panamá", "dominio": "www.tvn-2.com", "agencia": None},
+        {"medio": "mire.gob.pa", "dominio": "mire.gob.pa", "agencia": None},
+        {"medio": "asamblea.gob.pa", "dominio": "asamblea.gob.pa", "agencia": None},
+    ]
+    p = procedencias_de_evento(noticias)
+    assert p["n_medios"] == 1  # solo TVN (institucionales excluidas)
+    assert p["n_procedencias"] == 3  # las 3 cuentan como procedencia
