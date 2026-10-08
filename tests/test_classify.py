@@ -30,3 +30,20 @@ def test_validar_etiquetas_rechaza_fuera_de_temas():
 
 def test_excluir_es_permitida():
     assert classify.validar_etiquetas(["economia", "excluir"]) == []
+
+
+def test_baseline_sin_keywords_devuelve_sin_tema():
+    assert classify.clasificar_baseline("zzz título sin ninguna palabra clave xxx") == "sin_tema"
+
+
+def test_baseline_con_keyword_devuelve_tema():
+    assert classify.clasificar_baseline("el pib de Panamá creció") == "economia"
+
+
+def test_sin_tema_prioridad_baja_y_label_ui():
+    from app.db_ui import tema_label
+    from faro.scoring.score import _TEMA_PRIORIDAD
+
+    assert _TEMA_PRIORIDAD["sin_tema"] == 0.3
+    assert tema_label("sin_tema") == "Sin clasificar"
+    assert tema_label("economia") == "economia"

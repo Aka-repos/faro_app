@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import df_eventos, sin_datos
+from app.db_ui import df_eventos, sin_datos, tema_label
 
 
 def render(lente: str) -> None:
@@ -31,6 +31,6 @@ def render(lente: str) -> None:
         )
         st.caption(
             f"{r['n_menciones']} menciones · {r['n_medios']} medios · "
-            f"{r['n_procedencias']} procedencias · {r['tema']}"
+            f"{r['n_procedencias']} procedencias · {tema_label(r['tema'])}"
         )
         st.divider()

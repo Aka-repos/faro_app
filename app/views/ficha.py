@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import cargar_evento, df_eventos, sin_datos
+from app.db_ui import cargar_evento, df_eventos, sin_datos, tema_label
 
 
 def render(lente: str) -> None:
@@ -26,7 +26,7 @@ def render(lente: str) -> None:
         return
     st.markdown(f"### {ev['titulo_canonico']}")
     st.write(
-        f"Tema: **{ev['tema']}** · menciones **{ev['n_menciones']}** · medios **{ev['n_medios']}**"
+        f"Tema: **{tema_label(ev['tema'])}** · menciones **{ev['n_menciones']}** · medios **{ev['n_medios']}**"
         f" · procedencias **{ev['n_procedencias']}**"
     )
     for p in ev["puntajes"]:

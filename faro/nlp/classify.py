@@ -34,16 +34,16 @@ def validar_etiquetas(etiquetas: list[str], filas: list[dict] | None = None) -> 
 
 
 def clasificar_baseline(titulo: str) -> str:
-    """Clasifica por palabras clave (baseline, D-08)."""
+    """Clasifica por palabras clave (baseline, D-08). Sin coincidencias -> 'sin_tema'."""
     kw = load_keywords()["temas"]
     t = titulo.lower()
-    mejor = "economia"
-    mejor_puntos = -1
+    mejor = "sin_tema"
+    mejor_puntos = 0
     for tema, palabras in kw.items():
         puntos = sum(1 for p in palabras if p in t)
         if puntos > mejor_puntos:
             mejor, mejor_puntos = tema, puntos
-    return mejor if mejor_puntos > 0 else "economia"
+    return mejor
 
 
 def entrenar_final(embeddings: np.ndarray, etiquetas: list[str]) -> LogisticRegression:

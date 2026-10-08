@@ -18,6 +18,11 @@ def conectar() -> sqlite3.Connection:
     return db.connect()
 
 
+def tema_label(tema: str | None) -> str:
+    """Etiqueta legible para la UI; 'sin_tema' se muestra como 'Sin clasificar'."""
+    return "Sin clasificar" if tema in (None, "", "sin_tema") else tema
+
+
 def db_existe() -> bool:
     """True si la base existe y tiene al menos una noticia."""
     if not S.DB_PATH.exists():

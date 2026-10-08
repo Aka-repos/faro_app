@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import conectar, df_eventos, sin_datos
+from app.db_ui import conectar, df_eventos, sin_datos, tema_label
 from faro.events.graph import construir_grafo
 
 try:
@@ -140,7 +140,7 @@ def _mostrar_detalle(sel: str, conn) -> None:
             return
         st.markdown(f"**{ev['titulo_canonico']}**")
         st.write(
-            f"Tema **{ev['tema']}** · {ev['n_menciones']} menciones · {ev['n_medios']} medios · "
+            f"Tema **{tema_label(ev['tema'])}** · {ev['n_menciones']} menciones · {ev['n_medios']} medios · "
             f"{ev['n_procedencias']} procedencias"
         )
         for p in ev["puntajes"]:

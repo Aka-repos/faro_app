@@ -61,7 +61,7 @@ def _fecha_min_max(noticias: list[dict]) -> tuple[str, str]:
 
 def _tema_mayoritario(noticias: list[dict]) -> str:
     temas = [n.get("tema") for n in noticias if n.get("tema")]
-    return Counter(temas).most_common(1)[0][0] if temas else "economia"
+    return Counter(temas).most_common(1)[0][0] if temas else "sin_tema"
 
 
 def _cargar_clasificador_tema():

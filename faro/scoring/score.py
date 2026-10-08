@@ -34,6 +34,7 @@ _TEMA_PRIORIDAD = {
     "servicios_publicos": 0.85,
     "eventos_naturales": 0.8,
     "regulacion": 0.7,
+    "sin_tema": 0.3,
 }
 
 
