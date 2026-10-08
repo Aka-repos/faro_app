@@ -17,6 +17,9 @@ Cada archivo es JSONL (una línea = un registro UTF-8). Fechas en ISO 8601 UTC. 
 | idioma | str | `es` |
 | fecha_publicacion | str\|null | fecha de publicación (null si la fuente no la da) |
 | fecha_deteccion | str\|null | cuándo se detectó (seendate en GDELT) |
+
+> **TVN (sitemap mensual):** `fecha_publicacion` y `fecha_deteccion` son el `<lastmod>` del
+> `tvn_sitemap_contents_AAAA_MM.xml` (no la fecha editorial exacta). Se documenta aquí por trazabilidad.
 | fecha_extraccion | str | cuándo se recolectó |
 | alcance_texto | str | `titular` \| `metadatos` \| `resumen` |
 | resumen | str\|null | ≤ 400 caracteres; nunca el cuerpo completo |

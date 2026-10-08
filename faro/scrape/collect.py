@@ -14,6 +14,8 @@ from faro.loaders import load_fuentes, load_keywords
 from faro.quality.validate import normalize_url
 from faro.scrape import apis, html, oficiales, politeness, rss, sitemap
 
+_TVN_SITEMAPS_DIR = S.REPO_ROOT / "data" / "cache" / "tvn_sitemaps"
+
 
 def _meses(desde, hasta) -> list[tuple[str, str]]:
     """Meses entre `desde` y `hasta` (hasta EXCLUSIVO)."""
@@ -42,6 +44,138 @@ def _en_ventana(fecha: str | None) -> bool:
         return S.VENTANA_INICIO <= dt < S.VENTANA_FIN
     except ValueError:
         return True  # la valida validate.py
+
+
+def _seccion_permitida(url: str, incluir: list[str], excluir: list[str]) -> bool:
+    """Filtra por el primer segmento de la ruta (sección)."""
+    from urllib.parse import urlparse
+
+    seg = urlparse(url).path.lstrip("/").split("/")[0].lower()
+    if not seg:
+        return False
+    if seg in [x.lower() for x in excluir]:
+        return False
+    return seg in [x.lower() for x in incluir]
+
+
+def _muestrear_mes(articulos: list[dict], max_por_mes: int, seed: int = 42) -> list[dict]:
+    """Muestreo uniforme por día con semilla fija (máx. max_por_mes por mes)."""
+    import random
+    from collections import defaultdict
+
+    if len(articulos) <= max_por_mes:
+        return articulos
+    por_dia: dict[str, list] = defaultdict(list)
+    for a in articulos:
+        por_dia[(a.get("fecha_publicacion") or "")[:10] or "sin_fecha"].append(a)
+    rng = random.Random(seed)
+    for dia in por_dia:
+        rng.shuffle(por_dia[dia])
+    dias = sorted(por_dia.keys())
+    muestra: list[dict] = []
+    i = 0
+    while len(muestra) < max_por_mes:
+        avanza = False
+        for dia in dias:
+            if i < len(por_dia[dia]) and len(muestra) < max_por_mes:
+                muestra.append(por_dia[dia][i])
+                avanza = True
+        i += 1
+        if not avanza:
+            break
+    return muestra
+
+
+def _obtener_tvn_mes(nombre: str, url: str, cache_dir, client) -> tuple[str | None, str]:
+    """Devuelve (texto_xml|None, origen). Lee caché local si existe y no está vacío."""
+    local = cache_dir / nombre
+    if local.exists() and local.stat().st_size > 0:
+        return local.read_text(encoding="utf-8"), "cache local"
+    resp = client.get(url, fuente_id="tvn")
+    if resp is None or resp.status_code >= 400:
+        return None, "sin respuesta (red)"
+    texto = resp.text or ""
+    if not texto.strip():
+        local.write_text("", encoding="utf-8")
+        return None, "vacío en el origen"
+    local.write_text(texto, encoding="utf-8")
+    return texto, "red"
+
+
+def _recolectar_tvn_sitemaps(f, client, desde, hasta, noticias, reporte) -> None:
+    """TVN por sitemaps mensuales (prioridad): tvn_sitemap_contents_AAAA_MM.xml."""
+    fid = f["id"]
+    medio = f["nombre"]
+    max_por_mes = int(f.get("max_por_mes", 150))
+    incluir = f.get("secciones_incluir", [])
+    excluir = f.get("secciones_excluir", [])
+    cache_dir = _TVN_SITEMAPS_DIR
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    reporte[fid].setdefault("mensual", [])
+
+    for ini, _fin in _meses(desde, hasta):
+        aaaa_mm = f"{ini[:4]}_{ini[4:6]}"
+        nombre = f"tvn_sitemap_contents_{aaaa_mm}.xml"
+        url = f"https://www.tvn-2.com/{nombre}"
+        texto, origen = _obtener_tvn_mes(nombre, url, cache_dir, client)
+        if texto is None:
+            reporte[fid]["mensual"].append(
+                {
+                    "mes": ini[:6],
+                    "disponibles": 0,
+                    "tras_filtro": 0,
+                    "muestreadas": 0,
+                    "origen": origen,
+                }
+            )
+            print(f"    {fid} {ini[:6]}: 0 ({origen})")
+            continue
+        entradas = sitemap.parse_tvn_mensual(texto)
+        disponibles = len(entradas)
+        # Descartar sin título y filtrar por sección.
+        filtradas = [
+            e
+            for e in entradas
+            if e.get("titulo") and _seccion_permitida(e["url"], incluir, excluir)
+        ]
+        tras_filtro = len(filtradas)
+        muestra = _muestrear_mes(filtradas, max_por_mes, seed=42)
+        for e in muestra:
+            noticias.append(
+                {
+                    "tipo": "noticia",
+                    "id": f"n-{_hash_url(e['url'])}",
+                    "fuente_id": fid,
+                    "titulo": e["titulo"][:300],
+                    "url": e["url"],
+                    "medio": medio,
+                    "dominio": _dominio(e["url"]),
+                    "idioma": "es",
+                    "fecha_publicacion": e["fecha_publicacion"],
+                    "fecha_deteccion": e["fecha_publicacion"],
+                    "fecha_extraccion": datetime.now(UTC).isoformat(),
+                    "alcance_texto": "titular",
+                    "resumen": None,
+                    "es_agencia": False,
+                    "agencia": None,
+                    "sintetico": False,
+                    "via": "sitemap",
+                }
+            )
+        reporte[fid]["mensual"].append(
+            {
+                "mes": ini[:6],
+                "disponibles": disponibles,
+                "tras_filtro": tras_filtro,
+                "muestreadas": len(muestra),
+                "origen": origen,
+            }
+        )
+        reporte[fid]["ok"] += len(muestra)
+        print(
+            f"    {fid} {ini[:6]}: {disponibles} disponibles, {tras_filtro} tras filtro, "
+            f"{len(muestra)} muestreadas ({origen})"
+        )
 
 
 def _recolectar_sitemap(f, client, noticias, reporte) -> None:
@@ -175,7 +309,14 @@ def _recolectar_noticias(fuentes, client, desde, hasta) -> tuple[list[dict], dic
             except Exception as e:  # noqa: BLE001
                 reporte[fid]["errores"] += 1
                 reporte[fid].setdefault("error", str(e)[:120])
-        if f.get("sitemap_url"):
+        if f.get("sitemap_mensual"):
+            reporte[fid]["intentos"] += 1
+            try:
+                _recolectar_tvn_sitemaps(f, client, desde, hasta, noticias, reporte)
+            except Exception as e:  # noqa: BLE001
+                reporte[fid]["errores"] += 1
+                reporte[fid].setdefault("error", str(e)[:120])
+        elif f.get("sitemap_url"):
             reporte[fid]["intentos"] += 1
             try:
                 _recolectar_sitemap(f, client, noticias, reporte)
@@ -315,6 +456,10 @@ def _escribir_reporte_parcial(reporte: dict, n_noticias: int) -> None:
     """Guarda un reporte parcial (antes de las fuentes oficiales)."""
     ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     (S.REPORTS_DIR / f"recoleccion_{ts}_parcial.json").write_text(
-        json.dumps({"noticias": n_noticias, "por_fuente": reporte},
-                   ensure_ascii=False, indent=2, default=str)
+        json.dumps(
+            {"noticias": n_noticias, "por_fuente": reporte},
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
     )

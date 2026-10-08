@@ -11,6 +11,26 @@ _LOC = re.compile(r"<loc>\s*([^<]+?)\s*</loc>", re.I)
 _LAST_MOD = re.compile(r"<lastmod>\s*([^<]+?)\s*</lastmod>", re.I)
 _PUB_DATE = re.compile(r"<news:publication_date>\s*([^<]+?)\s*</news:publication_date>", re.I)
 _NEWS_TITLE = re.compile(r"<news:title>\s*([^<]+?)\s*</news:title>", re.I)
+_IMAGE_TITLE = re.compile(r"<image:title>\s*([^<]+?)\s*</image:title>", re.I)
+
+
+def parse_tvn_mensual(text: str) -> list[dict]:
+    """TVN sitemap mensual: [{url, titulo, fecha_publicacion}] desde <loc>, <image:title> y <lastmod>."""
+    out = []
+    for block in re.split(r"<url>", text)[1:]:
+        loc = _LOC.search(block)
+        if not loc:
+            continue
+        titulo = _IMAGE_TITLE.search(block)
+        lm = _LAST_MOD.search(block)
+        out.append(
+            {
+                "url": loc.group(1).strip(),
+                "titulo": titulo.group(1).strip() if titulo else None,
+                "fecha_publicacion": _iso(lm.group(1).strip()) if lm else None,
+            }
+        )
+    return out
 
 
 def _iso(s: str | None) -> str | None:

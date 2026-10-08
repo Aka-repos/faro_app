@@ -6,9 +6,13 @@ fuentes:
     nombre: "TVN Panamá"
     familia: noticias
     url_base: "https://www.tvn-2.com/"
-    metodo: rss
-    rss_url: "https://www.tvn-2.com/rss/"
-    sitemap_url: "https://www.tvn-2.com/sitemap.xml"
+    metodo: sitemap
+    rss_url: null
+    sitemap_url: "https://www.tvn-2.com/tvn_sitemap_index.xml"
+    sitemap_mensual: true
+    secciones_incluir: ["nacionales", "economia", "contenido-exclusivo"]
+    secciones_excluir: ["tvmax", "entretenimiento", "mundo", "videos", "jelou", "tvnpass", "tu-cara-me-suena", "la-loteria"]
+    max_por_mes: 150
     dominios: ["tvn-2.com", "www.tvn-2.com"]
     max_articulos: 300
     max_subsitemaps: 24
@@ -16,7 +20,7 @@ fuentes:
     user_agent: null
     licencia: "Titulares y enlaces públicos; no republicar artículos, imágenes ni videos sin autorización del patrocinador"
     condiciones: "Solo metadatos (título, URL, fecha, resumen publicado). El patrocinio no concede derechos de republicación."
-    notas: "Fuente patrocinadora; mínimo 20 registros en la ventana."
+    notas: "Fuente patrocinadora; mínimo 20 registros en la ventana. RSS desactivado (sin fecha); sitemaps mensuales tvn_sitemap_contents_AAAA_MM.xml."
 
   - id: telemetro
     nombre: "Telemetro"
