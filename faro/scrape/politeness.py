@@ -67,7 +67,9 @@ class PoliteClient:
         self._ultima[dominio] = time.monotonic()
 
     # --- petición con reintentos y evidencia ------------------------------
-    def get(self, url: str, fuente_id: str = "", **kwargs) -> httpx.Response | None:
+    def get(
+        self, url: str, fuente_id: str = "", sin_reintentos: bool = False, **kwargs
+    ) -> httpx.Response | None:
         self._pausar(url)
         permitido, nota = self.robots_permite(url)
         if permitido is False:
@@ -81,6 +83,25 @@ class PoliteClient:
                 }
             )
             return None
+
+        # Sin reintentos (para GDELT, que gestiona sus propios 10/20/40 s): una
+        # sola petición y devuelve la respuesta tal cual (incluido 429), no None.
+        if sin_reintentos:
+            try:
+                resp = self.client.get(url, **kwargs)
+            except httpx.HTTPError as e:  # noqa: BLE001
+                self.registro.append(
+                    {
+                        "url": url,
+                        "fuente_id": fuente_id,
+                        "status": "error",
+                        "nota": str(e),
+                        "fecha_UTC": _ahora(),
+                    }
+                )
+                return None
+            self._guardar(url, fuente_id, resp.status_code, resp.content)
+            return resp
 
         last_exc: Exception | None = None
         for intento in range(3):

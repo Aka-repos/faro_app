@@ -58,12 +58,13 @@ def gdelt(
 
     resp = None
     for intento in range(3):
-        resp = client.get(url, fuente_id="gdelt", params=params)
-        if resp is None:
-            return [], "sin respuesta (ver robots/politeness)"
-        if resp.status_code in (429, 500, 502, 503, 504) and intento < 2:
-            time.sleep([10, 20, 40][intento])
-            continue
+        # sin_reintentos=True: PoliteClient devuelve la respuesta (incluido 429) en vez
+        # de consumir los reintentos; aquí se aplican los 10/20/40 s.
+        resp = client.get(url, fuente_id="gdelt", params=params, sin_reintentos=True)
+        if resp is None or resp.status_code in (429, 500, 502, 503, 504):
+            if intento < 2:
+                time.sleep([10, 20, 40][intento])
+                continue
         break
     if resp is None or resp.status_code >= 400:
         return [], f"HTTP {resp.status_code if resp else '?'} tras 3 intentos"
