@@ -89,14 +89,20 @@ def ingesta(conn) -> dict:
     validados = validate.validar_todo(raw)
     cargar_fuentes(conn)
 
-    # Clasificar tema (cambio 5 y 7): reclasifica con el modelo si existe, si no baseline.
+    # Clasificar tema (cambios 5 y 7): un solo Embedder, un lote de titulares,
+    # predicción y predict_proba también en lote.
     tema_modelo = _cargar_clasificador_tema()
-    for n in validados["noticia"]:
-        if tema_modelo is not None:
-            vec = embed.Embedder().encode([n["titulo"]])
-            n["tema"] = classify.predecir(tema_modelo, vec)[0]
-            n["tema_conf"] = float(tema_modelo.predict_proba(vec).max())
-        else:
+    titulares = [n["titulo"] for n in validados["noticia"]]
+    if tema_modelo is not None and titulares:
+        emb = embed.Embedder()
+        matriz = emb.encode(titulares)
+        temas = classify.predecir(tema_modelo, matriz)
+        confs = tema_modelo.predict_proba(matriz).max(axis=1)
+        for n, tema, conf in zip(validados["noticia"], temas, confs, strict=False):
+            n["tema"] = tema
+            n["tema_conf"] = float(conf)
+    else:
+        for n in validados["noticia"]:
             n["tema"] = classify.clasificar_baseline(n["titulo"])
             n["tema_conf"] = None
 
