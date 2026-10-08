@@ -60,6 +60,31 @@ class UnionFind:
             self.p[rb] = ra
 
 
+# Entidades demasiado generales en este corpus: casi todas las noticias las mencionan, así que
+# compartirlas no indica que dos noticias traten del mismo hecho (y encadenaban eventos gigantes).
+_ENTIDADES_GENERICAS = {
+    "panamá",
+    "panama",
+    "república de panamá",
+    "ciudad de panamá",
+    "canal",
+    "canal de panamá",
+    "gobierno",
+    "estados unidos",
+    "ee . uu .",
+    "ee. uu.",
+    "eeuu",
+}
+
+
+def _entidades_especificas(ents: list[dict]) -> set[str]:
+    return {
+        e["nombre"].strip().lower()
+        for e in ents
+        if e["tipo"] in ("ORG", "LOC") and e["nombre"].strip().lower() not in _ENTIDADES_GENERICAS
+    }
+
+
 def _titulo_ratio(a: str, b: str) -> float:
     if not _RF:
         return 1.0 if a.strip().lower() == b.strip().lower() else 0.0
@@ -76,7 +101,7 @@ def agrupar_eventos(
     """Devuelve listas de índices de noticias que forman cada evento."""
     n = len(noticias)
     uf = UnionFind(n)
-    entidades = [extraer_entidades(nc["titulo"]) for nc in noticias]
+    entidades = [_entidades_especificas(extraer_entidades(nc["titulo"])) for nc in noticias]
 
     for i in range(n):
         for j in range(i + 1, n):
@@ -85,11 +110,7 @@ def agrupar_eventos(
             di = _iso_dt(fecha_efectiva(noticias[i]))
             dj = _iso_dt(fecha_efectiva(noticias[j]))
             dentro_ventana = di and dj and _horas(di, dj) <= ventana_h
-            comparten_entidad = any(
-                e["nombre"].lower() in [x["nombre"].lower() for x in entidades[j]]
-                for e in entidades[i]
-                if e["tipo"] in ("ORG", "LOC")
-            )
+            comparten_entidad = bool(entidades[i] & entidades[j])
             if ratio >= umbral_ratio and dentro_ventana:
                 uf.union(i, j)
             elif cos >= umbral_coseno and dentro_ventana and comparten_entidad:

@@ -33,13 +33,13 @@
     "turismo"
   ],
   "pares_agrupamiento": {
-    "precision": 0.28,
-    "recall": 1.0,
-    "f1": 0.438,
-    "vp": 7,
-    "fp": 18,
-    "fn": 0,
-    "vn": 25,
+    "precision": 0.75,
+    "recall": 0.857,
+    "f1": 0.8,
+    "vp": 6,
+    "fp": 2,
+    "fn": 1,
+    "vn": 41,
     "pares_sin_evento": 0
   }
 }
