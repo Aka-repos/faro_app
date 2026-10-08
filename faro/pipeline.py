@@ -14,7 +14,7 @@ import config.settings as S
 from faro import db
 from faro.agent import tools
 from faro.context.link import enlazar_contexto
-from faro.events.cluster import agrupar_eventos
+from faro.events.cluster import agrupar_eventos, fecha_efectiva
 from faro.events.contradict import detectar_contradicciones
 from faro.events.provenance import procedencias_de_evento
 from faro.loaders import load_fuentes
@@ -53,7 +53,7 @@ def cargar_fuentes(conn) -> None:
 
 
 def _fecha_min_max(noticias: list[dict]) -> tuple[str, str]:
-    fechas = [n["fecha_publicacion"] for n in noticias if n.get("fecha_publicacion")]
+    fechas = [fecha_efectiva(n) for n in noticias if fecha_efectiva(n)]
     if not fechas:
         return "", ""
     return min(fechas), max(fechas)
@@ -166,10 +166,10 @@ def deducir(conn) -> dict:
             "n_procedencias": proc["n_procedencias"],
         }
         db.upsert(conn, "evento", [evento])
-        # Marcar recirculada (fecha_publicacion previa a la ventana) sin ensuciar la tabla evento.
+        # Marcar recirculada (fecha efectiva previa a la ventana) sin ensuciar la tabla evento.
         recirculada = any(
-            _iso(noticias[i].get("fecha_publicacion"))
-            and _iso(noticias[i]["fecha_publicacion"]) < S.VENTANA_INICIO
+            _iso(fecha_efectiva(noticias[i]))
+            and _iso(fecha_efectiva(noticias[i])) < S.VENTANA_INICIO
             for i in grupo
         )
 
@@ -238,7 +238,7 @@ def reportes(conn, ingesta_res: dict, deducir_res: dict) -> dict:
         ]["c"],
         "fuera_de_ventana": db.fetchall(
             conn,
-            "SELECT COUNT(*) c FROM noticia WHERE fecha_deteccion IS NULL AND fecha_publicacion < ?",
+            "SELECT COUNT(*) c FROM noticia WHERE COALESCE(fecha_publicacion, fecha_deteccion) < ?",
             (S.VENTANA_INICIO.isoformat(),),
         )[0]["c"],
         "cuarentena": db.fetchall(

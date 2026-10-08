@@ -5,7 +5,8 @@ Combina:
 2. similitud por coseno de embeddings + ventana de 72 h + entidades compartidas.
 
 Una noticia recirculada conserva su fecha original y no se fusiona con eventos
-recientes (T03): el criterio de ventana temporal usa ``fecha_publicacion``.
+recientes (T03): el criterio de ventana temporal usa la **fecha efectiva**
+(`fecha_publicacion` o, si falta, `fecha_deteccion`).
 """
 
 from __future__ import annotations
@@ -32,6 +33,11 @@ def _iso_dt(s: str | None) -> datetime | None:
         return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except ValueError:
         return None
+
+
+def fecha_efectiva(n: dict) -> str | None:
+    """Fecha efectiva de una noticia: `fecha_publicacion` o, si falta, `fecha_deteccion`."""
+    return n.get("fecha_publicacion") or n.get("fecha_deteccion")
 
 
 def _horas(a: datetime, b: datetime) -> float:
@@ -76,8 +82,8 @@ def agrupar_eventos(
         for j in range(i + 1, n):
             ratio = _titulo_ratio(noticias[i]["titulo"], noticias[j]["titulo"])
             cos = float(np.dot(embeddings[i], embeddings[j]))
-            di = _iso_dt(noticias[i].get("fecha_publicacion"))
-            dj = _iso_dt(noticias[j].get("fecha_publicacion"))
+            di = _iso_dt(fecha_efectiva(noticias[i]))
+            dj = _iso_dt(fecha_efectiva(noticias[j]))
             dentro_ventana = di and dj and _horas(di, dj) <= ventana_h
             comparten_entidad = any(
                 e["nombre"].lower() in [x["nombre"].lower() for x in entidades[j]]

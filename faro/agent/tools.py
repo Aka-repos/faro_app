@@ -20,15 +20,15 @@ def buscar_noticias(conn, q="", desde=None, hasta=None, tema=None, limite=20) ->
         sql += " AND (titulo LIKE ? OR resumen LIKE ?)"
         params += [f"%{q}%", f"%{q}%"]
     if desde:
-        sql += " AND fecha_publicacion >= ?"
+        sql += " AND COALESCE(fecha_publicacion, fecha_deteccion) >= ?"
         params.append(desde)
     if hasta:
-        sql += " AND fecha_publicacion <= ?"
+        sql += " AND COALESCE(fecha_publicacion, fecha_deteccion) <= ?"
         params.append(hasta)
     if tema:
         sql += " AND tema = ?"
         params.append(tema)
-    sql += " ORDER BY fecha_publicacion DESC LIMIT ?"
+    sql += " ORDER BY COALESCE(fecha_publicacion, fecha_deteccion) DESC LIMIT ?"
     params.append(limite)
     return _rows(conn, sql, tuple(params))
 

@@ -435,7 +435,8 @@ def _formatear(pregunta: str, resultados: list[dict], conn, lente) -> tuple[str,
     # Noticias.
     if any(isinstance(r, dict) and "titulo" in r and "url" in r for r in resultados):
         r = [x for x in resultados if isinstance(x, dict) and "titulo" in x][0]
-        return f"Encontré: «{r['titulo']}» (medio {r['medio']}, {r['fecha_publicacion']}).", False
+        fecha = r.get("fecha_publicacion") or r.get("fecha_deteccion") or "sin fecha"
+        return f"Encontré: «{r['titulo']}» (medio {r['medio']}, {fecha}).", False
 
     return "No hay evidencia suficiente para responder con una cita válida.", True
 

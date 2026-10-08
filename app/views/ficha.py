@@ -36,8 +36,9 @@ def render(lente: str) -> None:
         )
     st.markdown("#### ¿Qué se reporta?")
     for n in ev["noticias"]:
+        fecha = n.get("fecha_publicacion") or n.get("fecha_deteccion") or "sin fecha"
         st.markdown(
-            f"- «{n['titulo']}» — *{n['medio']}* ({n['fecha_publicacion']})"
+            f"- «{n['titulo']}» — *{n['medio']}* ({fecha})"
             + (f" · agencia {n['agencia']}" if n.get("agencia") else "")
         )
     st.markdown("#### Contexto oficial")

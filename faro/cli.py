@@ -335,7 +335,8 @@ def _cmd_labels_sample(args) -> None:
     from faro.nlp import embed
 
     noticias = db.fetchall(
-        conn := db.connect(), "SELECT id, titulo, fecha_publicacion FROM noticia ORDER BY id"
+        conn := db.connect(),
+        "SELECT id, titulo, fecha_publicacion, fecha_deteccion FROM noticia ORDER BY id",
     )
     matriz = embed.Embedder().encode([n["titulo"] for n in noticias])
     grupos = agrupar_eventos(noticias, matriz)
@@ -484,7 +485,9 @@ def _cmd_muestra_urls(args) -> None:
     S.ensure_dirs()
     conn = db.connect()
     rows = db.fetchall(
-        conn, "SELECT id, medio, titulo, fecha_publicacion, url FROM noticia ORDER BY RANDOM()"
+        conn,
+        "SELECT id, medio, titulo, COALESCE(fecha_publicacion, fecha_deteccion) AS fecha, url "
+        "FROM noticia ORDER BY RANDOM()",
     )
     conn.close()
     rng = random.Random(42)
@@ -492,9 +495,9 @@ def _cmd_muestra_urls(args) -> None:
     path = S.REPORTS_DIR / "muestra_urls.csv"
     with open(path, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["noticia_id", "medio", "titulo", "fecha_publicacion", "url", "ok", "motivo"])
+        w.writerow(["noticia_id", "medio", "titulo", "fecha", "url", "ok", "motivo"])
         for r in muestra:
-            w.writerow([r["id"], r["medio"], r["titulo"], r["fecha_publicacion"], r["url"], "", ""])
+            w.writerow([r["id"], r["medio"], r["titulo"], r["fecha"], r["url"], "", ""])
     print(f"Muestra de {len(muestra)} URLs escrita en {path}")
 
 

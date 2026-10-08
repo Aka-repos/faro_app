@@ -32,7 +32,10 @@ def db_existe() -> bool:
 
 
 def df_noticias():
-    return pd.read_sql_query("SELECT * FROM noticia ORDER BY fecha_publicacion DESC", conectar())
+    return pd.read_sql_query(
+        "SELECT * FROM noticia ORDER BY COALESCE(fecha_publicacion, fecha_deteccion) DESC",
+        conectar(),
+    )
 
 
 def df_eventos(lente="editorial"):

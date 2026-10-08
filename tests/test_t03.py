@@ -42,3 +42,24 @@ def test_recirculada_no_se_fusiona_con_evento_reciente():
     grupos = agrupar_eventos(noticias, embs, ventana_h=72)
     # La recirculada queda en su propio grupo (no se fusiona por la ventana temporal).
     assert len(grupos) == 2
+
+
+def test_gdelt_sin_pub_y_tvn_mismo_evento():
+    # GDELT sin fecha_publicacion (solo deteccion) + TVN del mismo día -> mismo evento.
+    noticias = [
+        {
+            "titulo": "Canasta básica sube en octubre",
+            "medio": "GDELT",
+            "fecha_publicacion": None,
+            "fecha_deteccion": "2026-06-01T00:00:00+00:00",
+        },
+        {
+            "titulo": "Canasta básica sube en octubre",
+            "medio": "TVN Panamá",
+            "fecha_publicacion": "2026-06-01T03:00:00+00:00",
+            "fecha_deteccion": None,
+        },
+    ]
+    embs = Embedder().encode([n["titulo"] for n in noticias])
+    grupos = agrupar_eventos(noticias, embs, ventana_h=72)
+    assert len(grupos) == 1  # fecha efectiva los une en el mismo evento

@@ -28,7 +28,7 @@ def evidencia_de_evento(evento: dict, conn) -> tuple[list[dict], dict[str, str]]
                 "campo": "titulo",
                 "alcance_texto": n.get("alcance_texto", "titular"),
                 "medio": n.get("medio", ""),
-                "fecha": n.get("fecha_publicacion", ""),
+                "fecha": n.get("fecha_publicacion") or n.get("fecha_deteccion") or "",
             }
         )
     for c in evento.get("contexto", []):
