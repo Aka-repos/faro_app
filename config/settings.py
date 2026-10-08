@@ -33,6 +33,9 @@ OUT_DIR = DATA_DIR / "out"
 LABELS_DIR = DATA_DIR / "labels"
 SEED_DIR = DATA_DIR / "seed"
 
+# Transcripciones manuales: viven SIEMPRE en el repo (aunque RAW_DIR apunte a un tempdir).
+MANUAL_DIR = REPO_ROOT / "data" / "raw" / "manual"
+
 DB_PATH = Path(_env("FARO_DB", str(DATA_DIR / "faro.db")))
 if not DB_PATH.is_absolute():
     DB_PATH = REPO_ROOT / DB_PATH

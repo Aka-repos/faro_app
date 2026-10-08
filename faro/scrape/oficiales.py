@@ -90,8 +90,12 @@ def _validar_fila_manual(fuente: str, row: dict) -> str | None:
 
 
 def _leer_manual(fuente: str) -> list[dict]:
-    """Lee series transcritas a mano desde data/raw/manual/<fuente>.csv (validando)."""
-    path = S.RAW_DIR / "manual" / f"{fuente}.csv"
+    """Lee series transcritas desde data/raw/manual/<fuente>.csv (validando).
+
+    Usa `S.MANUAL_DIR` (siempre en el repo), no `S.RAW_DIR`, para que el modo
+    `--prueba` (RAW_DIR temporal) siga leyendo las transcripciones reales.
+    """
+    path = S.MANUAL_DIR / f"{fuente}.csv"
     if not path.exists():
         return []
     out = []
