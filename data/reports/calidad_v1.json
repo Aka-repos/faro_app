@@ -1,14 +1,14 @@
 {
-  "generado": "2026-10-08T14:43:23.028500+00:00",
+  "generado": "2026-10-08T16:22:21.681862+00:00",
   "conteos": {
-    "noticias": 3490,
+    "noticias": 3472,
     "series": 53,
     "indicadores": 540,
     "sismos": 208,
-    "cuarentena": 18
+    "cuarentena": 36
   },
   "medios_distintos": 15,
-  "institucionales": 2,
+  "institucionales": 1,
   "embedder": "intfloat/multilingual-e5-small",
   "ner": "es_core_news_md",
   "noticias_tvn": 1795,
@@ -21,11 +21,15 @@
     {
       "motivo": "sin_fecha",
       "c": 5
+    },
+    {
+      "motivo": "titular_no_informativo",
+      "c": 18
     }
   ],
   "top10": [
     {
-      "evento_id": "ev-0284",
+      "evento_id": "ev-0282",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -41,7 +45,7 @@
       "tema": "logistica"
     },
     {
-      "evento_id": "ev-0764",
+      "evento_id": "ev-0761",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -57,7 +61,7 @@
       "tema": "economia"
     },
     {
-      "evento_id": "ev-0510",
+      "evento_id": "ev-0507",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -89,7 +93,7 @@
       "tema": "logistica"
     },
     {
-      "evento_id": "ev-0081",
+      "evento_id": "ev-0080",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -105,7 +109,7 @@
       "tema": "logistica"
     },
     {
-      "evento_id": "ev-0202",
+      "evento_id": "ev-0200",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -121,7 +125,7 @@
       "tema": "logistica"
     },
     {
-      "evento_id": "ev-0143",
+      "evento_id": "ev-0142",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -153,7 +157,7 @@
       "tema": "logistica"
     },
     {
-      "evento_id": "ev-0113",
+      "evento_id": "ev-0112",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
@@ -169,7 +173,7 @@
       "tema": "logistica"
     },
     {
-      "evento_id": "ev-0806",
+      "evento_id": "ev-0803",
       "lente": "editorial",
       "R": 1.0,
       "I": 1.0,
