@@ -4,7 +4,7 @@ SHELL := /bin/bash
 PY := uv run python
 UV := uv
 
-.PHONY: setup data data-gdelt data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync muestra-urls sample-claims editor-candidatos clean
+.PHONY: setup data data-gdelt data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample labels-sample-extra check check-sources demo-offline demo-cache notion-sync muestra-urls sample-claims editor-candidatos clean
 
 ## Instala dependencias (uv sync), precarga e5-small y el modelo de spaCy (offline).
 setup:
@@ -77,6 +77,10 @@ eval-nlp:
 ## Muestra titulares y pares para etiquetar a mano -> data/labels/*_pendientes.csv.
 labels-sample:
 	$(PY) -m faro.cli labels-sample
+
+## 100 titulares extra (70 TVN + 30 resto) -> data/labels/temas_extra_pendientes.csv.
+labels-sample-extra:
+	$(PY) -m faro.cli labels-sample-extra
 
 ## Formato + lint + pruebas.
 check: 

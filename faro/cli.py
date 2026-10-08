@@ -295,6 +295,57 @@ def _cmd_eval_nlp(args) -> None:
     build()
 
 
+def _muestrear_extra(
+    rows: list[dict], pendientes: set[str], n_tvn: int = 70, n_resto: int = 30, seed: int = 42
+) -> list[dict]:
+    """Muestra extra de titulares priorizando temas subrepresentados del baseline."""
+    import random
+
+    from faro.nlp import classify
+
+    prioridad = {"eventos_naturales": 0, "turismo": 1, "regulacion": 2, "servicios_publicos": 3}
+    candidatos = [r for r in rows if r["id"] not in pendientes]
+    rng = random.Random(seed)
+    for r in candidatos:
+        r["tema"] = classify.clasificar_baseline(r["titulo"])
+        r["_rand"] = rng.random()
+
+    def _pick(lst, k):
+        return sorted(lst, key=lambda r: (prioridad.get(r["tema"], 99), r["_rand"]))[:k]
+
+    tvn = [r for r in candidatos if r.get("fuente_id") == "tvn"]
+    resto = [r for r in candidatos if r.get("fuente_id") != "tvn"]
+    return _pick(tvn, n_tvn) + _pick(resto, n_resto)
+
+
+def _cmd_labels_sample_extra(args) -> None:
+    """`make labels-sample-extra`: 100 titulares nuevos (70 TVN + 30 resto)."""
+    import csv
+
+    from faro import db
+
+    S.ensure_dirs()
+    pendientes: set[str] = set()
+    p = S.LABELS_DIR / "temas_pendientes.csv"
+    if p.exists():
+        with open(p, encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                pendientes.add(r["noticia_id"])
+
+    conn = db.connect()
+    rows = db.fetchall(conn, "SELECT id, titulo, medio, fuente_id FROM noticia WHERE titulo != ''")
+    conn.close()
+
+    muestra = _muestrear_extra(rows, pendientes)
+    path = S.LABELS_DIR / "temas_extra_pendientes.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["noticia_id", "titulo", "medio", "tema"])
+        for r in muestra:
+            w.writerow([r["id"], r["titulo"], r["medio"], ""])
+    print(f"{len(muestra)} titulares extra en {path}")
+
+
 def _cmd_labels_sample(args) -> None:
     """Genera data/labels/temas_pendientes.csv y pares_pendientes.csv para etiquetar a mano."""
     import csv
@@ -440,6 +491,7 @@ def main() -> None:
     sub.add_parser("eval")
     sub.add_parser("eval-nlp")
     sub.add_parser("labels-sample")
+    sub.add_parser("labels-sample-extra")
     sub.add_parser("check-sources")
     sub.add_parser("demo-offline")
     sub.add_parser("demo-cache")
@@ -459,6 +511,7 @@ def main() -> None:
         "eval": _cmd_eval,
         "eval-nlp": _cmd_eval_nlp,
         "labels-sample": _cmd_labels_sample,
+        "labels-sample-extra": _cmd_labels_sample_extra,
         "check-sources": _cmd_check_sources,
         "demo-offline": _cmd_demo_offline,
         "demo-cache": _cmd_demo_cache,
