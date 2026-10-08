@@ -233,8 +233,13 @@ def consultar(
     llm_cfg = llm_cfg or {}
     if llm_cfg.get("proveedor") and llm_cfg.get("modelo"):
         try:
-            from faro.agent.loop_llm import consultar_llm
+            from faro.agent.loop_llm import consultar_llm, consultar_plan_fijo
 
+            caps = llm_cfg.get("capacidades") or {}
+            if caps.get("herramientas") is False:
+                return consultar_plan_fijo(
+                    pregunta, conn, lente=lente, contexto=contexto, llm_cfg=llm_cfg
+                )
             return consultar_llm(pregunta, conn, lente=lente, contexto=contexto, llm_cfg=llm_cfg)
         except Exception as e:  # noqa: BLE001
             # Degradación a determinista si el LLM falla (D-06).

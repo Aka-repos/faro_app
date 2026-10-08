@@ -20,6 +20,109 @@ _MAX_PASOS = 6
 _BUDGET_S = 15.0
 
 
+def consultar_plan_fijo(
+    pregunta: str,
+    conn: sqlite3.Connection,
+    lente: str = "editorial",
+    contexto: dict | None = None,
+    llm_cfg: dict | None = None,
+) -> dict:
+    """Plan fijo (M4.3): reúne evidencia con el enrutador determinista y hace UNA llamada al LLM."""
+    from faro.agent.loop import _planificar
+
+    llm_cfg = llm_cfg or {}
+    t0 = time.time()
+    traza = []
+    evidencias: dict[str, str] = {}
+
+    for paso, (nombre, args) in enumerate(_planificar(pregunta)[:_MAX_PASOS], start=1):
+        fn = tools.HERRAMIENTAS.get(nombre)
+        if fn is None:
+            continue
+        try:
+            out = fn(conn, **args)
+        except Exception as e:  # noqa: BLE001
+            traza.append({"paso": paso, "herramienta": nombre, "estado": f"error:{e}"})
+            continue
+        _acumular_evidencias(nombre, out, evidencias)
+        traza.append(
+            {
+                "paso": paso,
+                "herramienta": nombre,
+                "argumentos": args,
+                "n_resultados": len(out) if isinstance(out, list) else 1,
+            }
+        )
+
+    datos = shield.delimitar_como_dato(
+        json.dumps(
+            [{"evidencia_id": k, "texto": v} for k, v in evidencias.items()], ensure_ascii=False
+        )[:4000]
+    )
+    mensajes = [
+        {"role": "system", "content": _system_prompt(lente, contexto)},
+        {"role": "user", "content": f"{pregunta}\n\n{datos}"},
+    ]
+    r = gateway.generate(
+        mensajes,
+        lente=lente,
+        proveedor=llm_cfg.get("proveedor"),
+        modelo=llm_cfg.get("modelo"),
+        api_key=llm_cfg.get("api_key"),
+        base_url=llm_cfg.get("base_url"),
+        modo=llm_cfg.get("modo"),
+        prompt_version="plan_fijo",
+    )
+    texto = r["texto"]
+    if shield.contiene_canario(texto):
+        return {
+            "respuesta": "Detecté un intento de inyección; me abstengo.",
+            "abstencion": True,
+            "afirmaciones": [],
+            "acciones": [],
+            "traza": traza,
+            "meta": _meta(llm_cfg, t0, "plan_fijo"),
+        }
+
+    datos_resp = _parsear_respuesta(texto)
+    ok_afirmaciones = [
+        a
+        for a in datos_resp.get("afirmaciones", [])
+        if verifier.verificar_afirmacion(a, evidencias.get(a.get("evidencia_id")), lente)[0]
+    ]
+    acciones_validas = []
+    for a in datos_resp.get("acciones", []):
+        try:
+            from schemas import AccionInterfaz
+
+            AccionInterfaz(accion=a.get("accion"), argumentos=a.get("argumentos", {}))
+            acciones_validas.append(a)
+        except Exception:  # noqa: BLE001
+            traza.append({"paso": 0, "herramienta": "accion_invalida", "estado": f"descartada:{a}"})
+
+    return {
+        "respuesta": datos_resp.get("respuesta", ""),
+        "abstencion": datos_resp.get("abstencion", False) or not ok_afirmaciones,
+        "afirmaciones": ok_afirmaciones,
+        "vacios": datos_resp.get("vacios", []),
+        "acciones": acciones_validas,
+        "traza": traza,
+        "meta": _meta(llm_cfg, t0, "plan_fijo"),
+    }
+
+
+def _meta(llm_cfg, t0, modo):
+    return {
+        "proveedor": llm_cfg.get("proveedor", "deterministico"),
+        "modelo": llm_cfg.get("modelo", "enrutador"),
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "costo_usd": 0.0,
+        "latencia_ms": int((time.time() - t0) * 1000),
+        "modo": modo,
+    }
+
+
 def _system_prompt(lente: str, contexto: dict | None) -> str:
     import config.settings as S
 
