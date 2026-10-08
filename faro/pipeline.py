@@ -78,19 +78,18 @@ def _cargar_clasificador_tema():
 
 
 def ingesta(conn) -> dict:
-    """Valida el snapshot crudo y carga las tablas de la Capa 1."""
+    """Valida el snapshot crudo y carga las tablas de la Capa 1.
+
+    No genera datos sintéticos: si data/raw está vacío, aborta (corre `make data`).
+    """
     raw = validate.load_raw()
     if not any(raw.values()):
-        from faro.seed import gen_indicadores, gen_noticias, gen_series, gen_sismos, write_raw
-
-        write_raw(gen_noticias(), gen_series(), gen_indicadores(), gen_sismos())
-        raw = validate.load_raw()
+        raise RuntimeError("data/raw vacío: corre `make data`")
 
     validados = validate.validar_todo(raw)
     cargar_fuentes(conn)
 
-    # Clasificar tema (cambio 5 y 7): siempre reclasifica con el modelo si existe,
-    # si no con el baseline. No reutiliza un tema previo del baseline.
+    # Clasificar tema (cambio 5 y 7): reclasifica con el modelo si existe, si no baseline.
     tema_modelo = _cargar_clasificador_tema()
     for n in validados["noticia"]:
         if tema_modelo is not None:
