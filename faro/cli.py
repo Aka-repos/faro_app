@@ -10,12 +10,42 @@ import config.settings as S
 
 
 def _cmd_data(args) -> None:
-    """Recolección real (WP-1). Nunca genera datos sintéticos."""
+    """Recolección real. Nunca genera datos sintéticos (M1, M1.5)."""
+    import tempfile
+    from datetime import datetime
+    from pathlib import Path
+
+    import config.settings as S
     from faro.scrape.collect import recolectar
 
-    res = recolectar()
+    if not S.FARO_CONTACTO:
+        print("⚠️  ADVERTENCIA: FARO_CONTACTO vacío; el User-Agent irá sin contacto (opcional).")
+
+    fuentes = [f.strip() for f in args.fuentes.split(",") if f.strip()] if args.fuentes else None
+
+    desde = hasta = None
+    if args.meses:
+        meses = sorted(m.strip() for m in args.meses.split(",") if m.strip())
+        desde = datetime.fromisoformat(f"{meses[0]}-01T00:00:00+00:00")
+        y, m = map(int, meses[-1].split("-"))
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+        hasta = datetime.fromisoformat(f"{y:04d}-{m:02d}-01T00:00:00+00:00")
+
+    if args.prueba:
+        tmp = Path(tempfile.mkdtemp(prefix="faro-data-smoke-"))
+        S.RAW_DIR = tmp / "raw"
+        S.REPORTS_DIR = tmp / "reports"
+        S.RAW_DIR.mkdir(parents=True, exist_ok=True)
+        S.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"Modo prueba: escribiendo en {tmp}")
+
+    res = recolectar(fuentes=fuentes, desde=desde, hasta=hasta)
     print("Recolección real completa:")
     print(json.dumps(res["conteos"], ensure_ascii=False, indent=2))
+    if res.get("por_fuente"):
+        print(json.dumps(res["por_fuente"], ensure_ascii=False, indent=2))
 
 
 def _cmd_data_seed(args) -> None:
@@ -320,7 +350,10 @@ def _cmd_demo_cache(args) -> None:
 def main() -> None:
     p = argparse.ArgumentParser(prog="faro", description="FARO — pipeline y demo")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("data")
+    p_data = sub.add_parser("data")
+    p_data.add_argument("--fuentes", help="ids separados por coma (subconjunto)")
+    p_data.add_argument("--meses", help="meses AAAA-MM separados por coma (subconjunto)")
+    p_data.add_argument("--prueba", action="store_true", help="escribir en carpeta temporal")
     sub.add_parser("data-seed")
     sub.add_parser("freeze")
     sub.add_parser("verify")

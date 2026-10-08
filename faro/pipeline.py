@@ -225,9 +225,9 @@ def reportes(conn, ingesta_res: dict, deducir_res: dict) -> dict:
         "medios_distintos": len(fuentes),
         "embedder": EMBEDDER_NAME,
         "ner": "es_core_news_md",
-        "noticias_tvn": db.fetchall(conn, "SELECT COUNT(*) c FROM noticia WHERE medio='TVN'")[0][
-            "c"
-        ],
+        "noticias_tvn": db.fetchall(conn, "SELECT COUNT(*) c FROM noticia WHERE fuente_id='tvn'")[
+            0
+        ]["c"],
         "fuera_de_ventana": db.fetchall(
             conn,
             "SELECT COUNT(*) c FROM noticia WHERE fecha_deteccion IS NULL AND fecha_publicacion < ?",

@@ -9,6 +9,9 @@ fuentes:
     metodo: rss
     rss_url: "https://www.tvn-2.com/rss/"
     sitemap_url: "https://www.tvn-2.com/sitemap.xml"
+    dominios: ["tvn-2.com", "www.tvn-2.com"]
+    max_articulos: 300
+    max_subsitemaps: 24
     rate_limit_s: 3
     user_agent: null
     licencia: "Titulares y enlaces públicos; no republicar artículos, imágenes ni videos sin autorización del patrocinador"
@@ -22,6 +25,9 @@ fuentes:
     metodo: rss
     rss_url: "https://www.telemetro.com/rss/"
     sitemap_url: null
+    dominios: ["telemetro.com", "www.telemetro.com"]
+    max_articulos: 300
+    max_subsitemaps: 24
     rate_limit_s: 3
     user_agent: null
     licencia: "Titulares y enlaces públicos"
@@ -35,6 +41,9 @@ fuentes:
     metodo: rss
     rss_url: "https://www.panamaamerica.com.pa/rss.xml"
     sitemap_url: null
+    dominios: ["panamaamerica.com.pa", "www.panamaamerica.com.pa"]
+    max_articulos: 300
+    max_subsitemaps: 24
     rate_limit_s: 3
     user_agent: null
     licencia: "Titulares y enlaces públicos"
@@ -48,6 +57,9 @@ fuentes:
     metodo: rss
     rss_url: "https://www.prensa.com/rss/"
     sitemap_url: null
+    dominios: ["prensa.com", "www.prensa.com"]
+    max_articulos: 300
+    max_subsitemaps: 24
     rate_limit_s: 3
     user_agent: null
     licencia: "Titulares y enlaces públicos"
@@ -61,6 +73,9 @@ fuentes:
     metodo: rss
     rss_url: "https://www.laestrella.com.pa/rss/"
     sitemap_url: null
+    dominios: ["laestrella.com.pa", "www.laestrella.com.pa"]
+    max_articulos: 300
+    max_subsitemaps: 24
     rate_limit_s: 3
     user_agent: null
     licencia: "Titulares y enlaces públicos"
@@ -74,6 +89,9 @@ fuentes:
     metodo: sitemap
     rss_url: null
     sitemap_url: "https://www.metrolibre.com/sitemap.xml"
+    dominios: ["metrolibre.com", "www.metrolibre.com"]
+    max_articulos: 300
+    max_subsitemaps: 24
     rate_limit_s: 3
     user_agent: null
     licencia: "Titulares y enlaces públicos"

@@ -1,9 +1,7 @@
-"""Orquestador de recolección real (F-01, H1–H2).
+"""Orquestador de recolección real (F-01, M1).
 
 Recorre `config/fuentes.yaml` por método (RSS → sitemap → GDELT → oficiales),
 deduplica por URL normalizada y escribe `data/raw/{noticias,series,indicadores,sismos}.jsonl`.
-
-Reglas: nunca mezclar con el seed; si hay registros `sintetico: true` en raw, aborta.
 """
 
 from __future__ import annotations
@@ -12,13 +10,12 @@ import json
 from datetime import UTC, datetime
 
 import config.settings as S
-from faro.loaders import load_fuentes
+from faro.loaders import load_fuentes, load_keywords
 from faro.quality.validate import normalize_url
 from faro.scrape import apis, html, oficiales, politeness, rss, sitemap
 
 
 def _meses(desde, hasta) -> list[tuple[str, str]]:
-    """Lista de (inicio, fin) mensuales en formato GDELT (YYYYMMDDHHMMSS)."""
     import calendar
 
     out = []
@@ -26,77 +23,163 @@ def _meses(desde, hasta) -> list[tuple[str, str]]:
     fin = (hasta.year, hasta.month)
     while (y, m) <= fin:
         ultimo = calendar.monthrange(y, m)[1]
-        ini = f"{y:04d}{m:02d}01000000"
-        f = f"{y:04d}{m:02d}{ultimo:02d}235959"
-        out.append((ini, f))
+        out.append((f"{y:04d}{m:02d}01000000", f"{y:04d}{m:02d}{ultimo:02d}235959"))
         m += 1
         if m > 12:
-            m = 1
-            y += 1
+            m, y = 1, y + 1
     return out
 
 
-def _recolectar_noticias(
-    fuentes: list[dict], client: politeness.PoliteClient, desde, hasta
-) -> tuple[list[dict], dict]:
+def _recolectar_sitemap(f, client, noticias, reporte) -> None:
+    """Sitemap acotado (M1.4): respeta max_articulos/max_subsitemaps y news:title."""
+    fid = f["id"]
+    medio = f["nombre"]
+    max_art = int(f.get("max_articulos", 300))
+    max_sub = int(f.get("max_subsitemaps", 24))
+    reporte[fid].setdefault("omitidas_por_limite", 0)
+    reporte[fid].setdefault("omitidas_fuera_de_ventana", 0)
+
+    entradas = sitemap.parse_sitemap(f["sitemap_url"], client=client)
+    sub_contados = 0
+    articulos: list[dict] = []
+    for e in entradas:
+        if e.get("es_indice"):
+            if sub_contados >= max_sub:
+                continue
+            sub_contados += 1
+            for s2 in sitemap.parse_sitemap(e["url"], client=client):
+                if s2.get("es_indice"):
+                    continue
+                if s2.get("titulo") and s2.get("fecha_publicacion"):
+                    # news:title + publication_date -> no abrir la página.
+                    articulos.append(
+                        {
+                            "tipo": "noticia",
+                            "id": f"n-{_hash_url(s2['url'])}",
+                            "fuente_id": fid,
+                            "titulo": s2["titulo"][:300],
+                            "url": s2["url"],
+                            "medio": medio,
+                            "dominio": _dominio(s2["url"]),
+                            "idioma": "es",
+                            "fecha_publicacion": s2["fecha_publicacion"],
+                            "fecha_deteccion": s2["fecha_publicacion"],
+                            "fecha_extraccion": datetime.now(UTC).isoformat(),
+                            "alcance_texto": "titular",
+                            "resumen": None,
+                            "es_agencia": False,
+                            "agencia": None,
+                            "sintetico": False,
+                            "via": "sitemap",
+                        }
+                    )
+                else:
+                    art = html.extract_article(s2["url"], client=client, fuente_id=fid, medio=medio)
+                    if art.get("titulo"):
+                        art["via"] = "sitemap"
+                        articulos.append(art)
+        else:
+            if e.get("titulo") and e.get("fecha_publicacion"):
+                articulos.append(
+                    {
+                        "tipo": "noticia",
+                        "id": f"n-{_hash_url(e['url'])}",
+                        "fuente_id": fid,
+                        "titulo": e["titulo"][:300],
+                        "url": e["url"],
+                        "medio": medio,
+                        "dominio": _dominio(e["url"]),
+                        "idioma": "es",
+                        "fecha_publicacion": e["fecha_publicacion"],
+                        "fecha_deteccion": e["fecha_publicacion"],
+                        "fecha_extraccion": datetime.now(UTC).isoformat(),
+                        "alcance_texto": "titular",
+                        "resumen": None,
+                        "es_agencia": False,
+                        "agencia": None,
+                        "sintetico": False,
+                        "via": "sitemap",
+                    }
+                )
+            else:
+                art = html.extract_article(e["url"], client=client, fuente_id=fid, medio=medio)
+                if art.get("titulo"):
+                    art["via"] = "sitemap"
+                    articulos.append(art)
+
+    # Muestreo uniforme por mes si se supera max_articulos.
+    if len(articulos) > max_art:
+        reporte[fid]["omitidas_por_limite"] += len(articulos) - max_art
+        por_mes: dict[str, list] = {}
+        for a in articulos:
+            mes = (a.get("fecha_publicacion") or "")[:7] or "sin_fecha"
+            por_mes.setdefault(mes, []).append(a)
+        muestra = []
+        for _mes, filas in por_mes.items():
+            k = max(1, round(max_art * len(filas) / len(articulos)))
+            paso = max(1, len(filas) // k)
+            muestra.extend(filas[::paso][:k])
+        articulos = muestra[:max_art]
+
+    noticias.extend(articulos)
+    reporte[fid]["ok"] += len(articulos)
+
+
+def _recolectar_noticias(fuentes, client, desde, hasta) -> tuple[list[dict], dict]:
     """RSS + sitemap + GDELT -> lista de noticias normalizadas."""
     noticias: list[dict] = []
     reporte: dict[str, dict] = {}
 
     for f in fuentes:
-        if f.get("familia") != "noticias":
+        if f.get("familia") != "noticias" or f["id"] == "gdelt":
             continue
         fid = f["id"]
-        medio = f["nombre"]
-        reporte[fid] = {"intentos": 0, "ok": 0, "robots": 0, "errores": 0, "en_ventana": 0}
-
-        # RSS
+        reporte[fid] = {
+            "intentos": 0,
+            "ok": 0,
+            "robots": 0,
+            "errores": 0,
+            "omitidas_por_limite": 0,
+            "omitidas_fuera_de_ventana": 0,
+        }
         if f.get("metodo") == "rss" and f.get("rss_url"):
             reporte[fid]["intentos"] += 1
             try:
-                filas = rss.parse_rss(f["rss_url"], fuente_id=fid, medio=medio, client=client)
+                filas = rss.parse_rss(f["rss_url"], fuente_id=fid, medio=f["nombre"], client=client)
                 noticias.extend(filas)
                 reporte[fid]["ok"] += len(filas)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
                 reporte[fid]["errores"] += 1
-
-        # Sitemap
+                reporte[fid].setdefault("error", str(e)[:120])
         if f.get("sitemap_url"):
             reporte[fid]["intentos"] += 1
             try:
-                entradas = sitemap.parse_sitemap(f["sitemap_url"], client=client)
-                for e in entradas[:500]:
-                    if e.get("es_indice"):
-                        sub = sitemap.parse_sitemap(e["url"], client=client)
-                        for s2 in sub[:500]:
-                            art = html.extract_article(
-                                s2["url"], client=client, fuente_id=fid, medio=medio
-                            )
-                            if art.get("titulo"):
-                                noticias.append(art)
-                                reporte[fid]["ok"] += 1
-                    else:
-                        art = html.extract_article(
-                            e["url"], client=client, fuente_id=fid, medio=medio
-                        )
-                        if art.get("titulo"):
-                            noticias.append(art)
-                            reporte[fid]["ok"] += 1
+                _recolectar_sitemap(f, client, noticias, reporte)
             except Exception as e:  # noqa: BLE001
                 reporte[fid]["errores"] += 1
+                reporte[fid].setdefault("error", str(e)[:120])
 
-    # GDELT (12 meses) para TVN y por dominio, y por país+tema.
-    try:
-        for ini, fin in _meses(desde, hasta):
-            for q in ["domain:tvn-2.com", "sourcecountry:PM"]:
-                filas = apis.gdelt(q, ini, fin, maxrec=250)
-                noticias.extend(filas)
-                reporte.setdefault("gdelt", {"intentos": 0, "ok": 0, "robots": 0, "errores": 0})
-                reporte["gdelt"]["intentos"] += 1
-                reporte["gdelt"]["ok"] += len(filas)
-    except Exception:  # noqa: BLE001
-        reporte.setdefault("gdelt", {"intentos": 0, "ok": 0, "robots": 0, "errores": 0})
-        reporte["gdelt"]["errores"] += 1
+    # GDELT (M1.2): por mes, con pausa y errores visibles por consulta.
+    g = {"intentos": 0, "ok": 0, "errores": 0, "detalle": []}
+    keywords = load_keywords()["temas"]
+    temas_consulta = []
+    for _tema, palabras in keywords.items():
+        temas_consulta.append(f"({(' OR '.join(palabras[:3]))})")
+    gclient = politeness.PoliteClient(rate_limit_s=6.0)
+    for ini, fin in _meses(desde, hasta):
+        consultas = [("domain:tvn-2.com", "")] + [("sourcecountry:PM", t) for t in temas_consulta]
+        for base, tema in consultas:
+            q = f"{base} {tema}".strip()
+            g["intentos"] += 1
+            filas, error = apis.gdelt(q, ini, fin, maxrec=250, client=gclient)
+            if error:
+                g["errores"] += 1
+                g["detalle"].append({"mes": ini[:6], "query": q, "ok": False, "error": error})
+                continue
+            noticias.extend(filas)
+            g["ok"] += len(filas)
+            g["detalle"].append({"mes": ini[:6], "query": q, "ok": True, "n": len(filas)})
+    reporte["gdelt"] = g
 
     return noticias, reporte
 
@@ -107,7 +190,6 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     hasta = hasta or S.VENTANA_FIN
     S.ensure_dirs()
 
-    # Protección: nunca mezclar con el seed.
     for f in S.RAW_DIR.glob("*.jsonl"):
         for linea in f.read_text(encoding="utf-8").splitlines():
             if '"sintetico": true' in linea:
@@ -123,15 +205,19 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     client = politeness.PoliteClient(rate_limit_s=3.0)
     noticias, reporte = _recolectar_noticias(cfg, client, desde, hasta)
 
-    # Oficiales.
     indicadores = oficiales.banco_mundial()
     sismos = oficiales.usgs()
-    series = oficiales.inec() + oficiales.acp() + oficiales.sbp()
+    series_inec = oficiales.inec()
+    series_sbp = oficiales.sbp()
+    series_acp = oficiales.acp()
+    series = series_inec + series_sbp + series_acp
     reporte["banco_mundial"] = {"ok": len(indicadores)}
     reporte["usgs"] = {"ok": len(sismos)}
-    reporte["oficiales_manual"] = {"ok": len(series)}
+    reporte["inec"] = {"ok": len(series_inec), "no_disponible": len(series_inec) == 0}
+    reporte["sbp"] = {"ok": len(series_sbp), "no_disponible": len(series_sbp) == 0}
+    # Cambio 2: ACP fuera de alcance -> "no disponible" sin error.
+    reporte["acp"] = {"ok": len(series_acp), "no_disponible": True}
 
-    # Deduplicar noticias por URL normalizada, conservando la más completa.
     por_url: dict[str, dict] = {}
     for n in noticias:
         nu = normalize_url(n["url"])
@@ -160,6 +246,20 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
         json.dumps(resumen, ensure_ascii=False, indent=2, default=str)
     )
     return resumen
+
+
+def _hash_url(url: str) -> str:
+    import hashlib
+    from urllib.parse import urlparse
+
+    u = urlparse(url.strip())
+    return hashlib.sha1(f"{u.netloc.lower()}{u.path.rstrip('/')}".encode()).hexdigest()[:16]
+
+
+def _dominio(url: str) -> str:
+    from urllib.parse import urlparse
+
+    return urlparse(url).netloc.lower()
 
 
 def _escribir(nombre: str, filas: list[dict]) -> None:

@@ -90,6 +90,7 @@ def parse_rss(url: str, fuente_id: str = "", medio: str = "", client=None) -> li
                 "es_agencia": es_agencia,
                 "agencia": agencia,
                 "sintetico": False,
+                "via": "rss",
             }
         )
     return out

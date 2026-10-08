@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime
 
 import httpx
@@ -24,12 +25,24 @@ def _iso(dt) -> str:
 
 
 def gdelt(
-    query: str, start: str, end: str, domain: str | None = None, maxrec: int = 250
-) -> list[dict]:
-    """GDELT DOC 2.0 ArtList por ventana temporal. Metadatos de enlaces (titular).
+    query: str,
+    start: str,
+    end: str,
+    domain: str | None = None,
+    maxrec: int = 250,
+    client=None,
+) -> tuple[list[dict], str | None]:
+    """GDELT DOC 2.0 ArtList por ventana temporal. Devuelve (filas, error|None).
 
-    `seendate` se mapea a `fecha_deteccion`, nunca a `fecha_publicacion` (que GDELT no da).
+    - Pausa mínima 6 s para api.gdeltproject.org; reintentos ante 429/5xx (10/20/40 s).
+    - `seendate` se mapea a `fecha_deteccion`, nunca a `fecha_publicacion`.
+    - Normaliza el medio por dominio (M1.3) y marca `via="gdelt"`.
     """
+    from faro.scrape import politeness
+    from faro.scrape.medios import normalizar_medio
+
+    if client is None:
+        client = politeness.PoliteClient(rate_limit_s=6.0)
     url = "https://api.gdeltproject.org/api/v2/doc/doc"
     params = {
         "query": query,
@@ -42,29 +55,41 @@ def gdelt(
     }
     if domain:
         params["query"] = f"{query} domain:{domain}"
+
+    resp = None
+    for intento in range(3):
+        resp = client.get(url, fuente_id="gdelt", params=params)
+        if resp is None:
+            return [], "sin respuesta (ver robots/politeness)"
+        if resp.status_code in (429, 500, 502, 503, 504) and intento < 2:
+            time.sleep([10, 20, 40][intento])
+            continue
+        break
+    if resp is None or resp.status_code >= 400:
+        return [], f"HTTP {resp.status_code if resp else '?'} tras 3 intentos"
+
     try:
-        r = httpx.get(
-            url, params=params, timeout=S.HTTP_TIMEOUT, headers={"User-Agent": S.USER_AGENT}
-        )
-        r.raise_for_status()
-        data = r.json()
-    except Exception:  # noqa: BLE001
-        return []
+        data = resp.json()
+    except Exception as e:  # noqa: BLE001
+        return [], f"JSON inválido: {e}"
+
     out = []
     for a in data.get("articles", []):
         url_a = a.get("url", "")
         if not url_a:
             continue
+        dominio = a.get("domain", "")
+        fuente_id, medio = normalizar_medio(dominio) or ("gdelt", dominio)
         seendate = a.get("seendate", "")
         out.append(
             {
                 "tipo": "noticia",
                 "id": f"n-{_hash_url(url_a)}",
-                "fuente_id": "gdelt",
+                "fuente_id": fuente_id,
                 "titulo": a.get("title", "")[:300],
                 "url": url_a,
-                "medio": a.get("domain", ""),
-                "dominio": a.get("domain", ""),
+                "medio": medio,
+                "dominio": dominio,
                 "idioma": "es",
                 "fecha_publicacion": None,  # GDELT ArtList no trae fecha de publicación
                 "fecha_deteccion": seendate or None,
@@ -74,9 +99,10 @@ def gdelt(
                 "es_agencia": False,
                 "agencia": None,
                 "sintetico": False,
+                "via": "gdelt",
             }
         )
-    return out
+    return out, None
 
 
 def _hash_url(url: str) -> str:

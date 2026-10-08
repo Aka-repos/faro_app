@@ -36,6 +36,7 @@ class RegistroNoticia(BaseModel):
     es_agencia: bool = False
     agencia: str | None = None
     hash: str | None = None
+    via: str | None = None  # rss | sitemap | html | gdelt
 
 
 class SerieOficial(BaseModel):
