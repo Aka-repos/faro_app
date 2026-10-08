@@ -15,6 +15,7 @@ from faro.quality.validate import normalize_url
 from faro.scrape import apis, html, oficiales, politeness, rss, sitemap
 
 _TVN_SITEMAPS_DIR = S.REPO_ROOT / "data" / "cache" / "tvn_sitemaps"
+_GDELT_CACHE_DIR = S.REPO_ROOT / "data" / "cache" / "gdelt"
 
 
 def _meses(desde, hasta) -> list[tuple[str, str]]:
@@ -324,31 +325,84 @@ def _recolectar_noticias(fuentes, client, desde, hasta) -> tuple[list[dict], dic
                 reporte[fid]["errores"] += 1
                 reporte[fid].setdefault("error", str(e)[:120])
 
-    # GDELT (M1.2): por mes, con pausa y errores visibles por consulta.
-    g = {"intentos": 0, "ok": 0, "errores": 0, "detalle": []}
+    # GDELT: por mes/consulta, con caché por consulta y errores visibles.
+    gdelt_noticias, g = _recolectar_gdelt(desde, hasta)
+    noticias.extend(gdelt_noticias)
+    reporte["gdelt"] = g
+
+    return noticias, reporte
+
+
+def _gdelt_cache_key(mes: str, query: str) -> str:
+    import hashlib
+
+    h = hashlib.sha1(query.encode("utf-8")).hexdigest()[:12]
+    return f"{mes}_{h}.json"
+
+
+def _gdelt_leer_cache(mes: str, query: str) -> list[dict] | None:
+    """Devuelve las filas cacheadas (None si no hay caché)."""
+    path = _GDELT_CACHE_DIR / _gdelt_cache_key(mes, query)
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8")).get("filas", [])
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
+def _gdelt_guardar_cache(mes: str, query: str, filas: list[dict]) -> None:
+    _GDELT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = _GDELT_CACHE_DIR / _gdelt_cache_key(mes, query)
+    path.write_text(
+        json.dumps(
+            {"mes": mes, "query": query, "filas": filas, "fecha": datetime.now(UTC).isoformat()},
+            ensure_ascii=False,
+            default=str,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
+    """GDELT por mes/consulta con caché por consulta (solo respuestas exitosas).
+
+    Una corrida interrumpida o con 429 se completa re-ejecutando: las consultas ya
+    cacheadas se saltan sin repetir la petición.
+    """
+    g = {"intentos": 0, "ok": 0, "errores": 0, "desde_cache": 0, "detalle": []}
     keywords = load_keywords()["temas"]
-    temas_consulta = []
-    for _tema, palabras in keywords.items():
-        temas_consulta.append(f"({(' OR '.join(palabras[:3]))})")
+    temas_consulta = [f"({(' OR '.join(palabras[:3]))})" for _tema, palabras in keywords.items()]
     gclient = politeness.PoliteClient(rate_limit_s=6.0)
+    noticias: list[dict] = []
     for ini, fin in _meses(desde, hasta):
+        mes = ini[:6]
         consultas = [("domain:tvn-2.com", "")] + [("sourcecountry:PM", t) for t in temas_consulta]
         for base, tema in consultas:
             q = f"{base} {tema}".strip()
+            cached = _gdelt_leer_cache(mes, q)
+            if cached is not None:
+                noticias.extend(cached)
+                g["ok"] += len(cached)
+                g["desde_cache"] += 1
+                g["detalle"].append(
+                    {"mes": mes, "query": q, "ok": True, "n": len(cached), "desde_cache": True}
+                )
+                print(f"    gdelt {mes} '{q[:40]}': {len(cached)} filas (caché)")
+                continue
             g["intentos"] += 1
             filas, error = apis.gdelt(q, ini, fin, maxrec=250, client=gclient)
             if error:
                 g["errores"] += 1
-                g["detalle"].append({"mes": ini[:6], "query": q, "ok": False, "error": error})
-                print(f"    gdelt {ini[:6]} '{q[:40]}': error {error}")
+                g["detalle"].append({"mes": mes, "query": q, "ok": False, "error": error})
+                print(f"    gdelt {mes} '{q[:40]}': error {error}")
                 continue
+            _gdelt_guardar_cache(mes, q, filas)
             noticias.extend(filas)
             g["ok"] += len(filas)
-            g["detalle"].append({"mes": ini[:6], "query": q, "ok": True, "n": len(filas)})
-            print(f"    gdelt {ini[:6]} '{q[:40]}': {len(filas)} filas")
-    reporte["gdelt"] = g
-
-    return noticias, reporte
+            g["detalle"].append({"mes": mes, "query": q, "ok": True, "n": len(filas)})
+            print(f"    gdelt {mes} '{q[:40]}': {len(filas)} filas")
+    return noticias, g
 
 
 def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict:
