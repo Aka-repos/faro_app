@@ -115,7 +115,9 @@ def generate(
 
     # Incluye el modo en la clave: una corrida 'auto' (cayó a Ollama) no debe reutilizar
     # el caché de una corrida 'usuario' (cayó a extractivo) con el mismo mensaje.
-    key = cache.cache_key(prompt_version, lente, ids, f"{modo}:{modelo or 'extractivo'}", mensajes, tool_names)
+    key = cache.cache_key(
+        prompt_version, lente, ids, f"{modo}:{modelo or 'extractivo'}", mensajes, tool_names
+    )
     hit = cache.get(key)
     if hit:
         hit["desde_cache"] = True
