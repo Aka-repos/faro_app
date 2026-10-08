@@ -179,17 +179,25 @@ def _recolectar_noticias(fuentes, client, desde, hasta) -> tuple[list[dict], dic
             if error:
                 g["errores"] += 1
                 g["detalle"].append({"mes": ini[:6], "query": q, "ok": False, "error": error})
+                print(f"    gdelt {ini[:6]} '{q[:40]}': error {error}")
                 continue
             noticias.extend(filas)
             g["ok"] += len(filas)
             g["detalle"].append({"mes": ini[:6], "query": q, "ok": True, "n": len(filas)})
+            print(f"    gdelt {ini[:6]} '{q[:40]}': {len(filas)} filas")
     reporte["gdelt"] = g
 
     return noticias, reporte
 
 
 def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict:
-    """Recolección real completa. Devuelve conteos por tipo y por fuente."""
+    """Recolección real completa. Devuelve conteos por tipo y por fuente.
+
+    Progreso visible por etapa y guardado incremental de noticias.jsonl + reporte
+    antes de las fuentes oficiales (punto 5).
+    """
+    import time as _time
+
     desde = desde or S.VENTANA_INICIO
     hasta = hasta or S.VENTANA_FIN
     S.ensure_dirs()
@@ -206,11 +214,29 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
         ids = set(fuentes)
         cfg = [f for f in cfg if f["id"] in ids]
 
+    t0 = _time.time()
     client = politeness.PoliteClient(rate_limit_s=3.0)
+    print(f"[{_time.time() - t0:6.1f}s] Recolectando noticias (RSS + sitemaps + GDELT)...")
     noticias, reporte = _recolectar_noticias(cfg, client, desde, hasta)
 
+    # Deduplicar y guardar incrementalmente ANTES de las fuentes oficiales.
+    por_url: dict[str, dict] = {}
+    for n in noticias:
+        nu = normalize_url(n["url"])
+        actual = por_url.get(nu)
+        if actual is None or (n.get("fecha_publicacion") and not actual.get("fecha_publicacion")):
+            por_url[nu] = n
+    noticias = list(por_url.values())
+    _escribir("noticias.jsonl", noticias)
+    _escribir_reporte_parcial(reporte, len(noticias))
+    print(f"[{_time.time() - t0:6.1f}s] Noticias: {len(noticias)} (guardadas en noticias.jsonl).")
+
+    print(f"[{_time.time() - t0:6.1f}s] Banco Mundial...")
     indicadores = oficiales.banco_mundial()
+    print(f"[{_time.time() - t0:6.1f}s] Banco Mundial: {len(indicadores)} filas.")
+    print(f"[{_time.time() - t0:6.1f}s] USGS...")
     sismos = oficiales.usgs()
+    print(f"[{_time.time() - t0:6.1f}s] USGS: {len(sismos)} sismos.")
     series_inec = oficiales.inec()
     series_sbp = oficiales.sbp()
     series_acp = oficiales.acp()
@@ -222,15 +248,6 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     # Cambio 2: ACP fuera de alcance -> "no disponible" sin error.
     reporte["acp"] = {"ok": len(series_acp), "no_disponible": True}
 
-    por_url: dict[str, dict] = {}
-    for n in noticias:
-        nu = normalize_url(n["url"])
-        actual = por_url.get(nu)
-        if actual is None or (n.get("fecha_publicacion") and not actual.get("fecha_publicacion")):
-            por_url[nu] = n
-    noticias = list(por_url.values())
-
-    _escribir("noticias.jsonl", noticias)
     _escribir("series.jsonl", series)
     _escribir("indicadores.jsonl", indicadores)
     _escribir("sismos.jsonl", sismos)
@@ -238,6 +255,7 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     resumen = {
         "fecha": datetime.now(UTC).isoformat(),
+        "duracion_s": round(_time.time() - t0, 1),
         "conteos": {
             "noticias": len(noticias),
             "series": len(series),
@@ -249,6 +267,7 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     (S.REPORTS_DIR / f"recoleccion_{ts}.json").write_text(
         json.dumps(resumen, ensure_ascii=False, indent=2, default=str)
     )
+    print(f"[{_time.time() - t0:6.1f}s] Reporte final en reports/recoleccion_{ts}.json.")
     return resumen
 
 
@@ -270,3 +289,12 @@ def _escribir(nombre: str, filas: list[dict]) -> None:
     with open(S.RAW_DIR / nombre, "w", encoding="utf-8") as fh:
         for r in filas:
             fh.write(json.dumps(r, ensure_ascii=False, default=str) + "\n")
+
+
+def _escribir_reporte_parcial(reporte: dict, n_noticias: int) -> None:
+    """Guarda un reporte parcial (antes de las fuentes oficiales)."""
+    ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    (S.REPORTS_DIR / f"recoleccion_{ts}_parcial.json").write_text(
+        json.dumps({"noticias": n_noticias, "por_fuente": reporte},
+                   ensure_ascii=False, indent=2, default=str)
+    )
