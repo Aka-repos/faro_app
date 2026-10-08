@@ -4,7 +4,7 @@ SHELL := /bin/bash
 PY := uv run python
 UV := uv
 
-.PHONY: setup data data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync muestra-urls sample-claims editor-candidatos clean
+.PHONY: setup data data-gdelt data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync muestra-urls sample-claims editor-candidatos clean
 
 ## Instala dependencias (uv sync), precarga e5-small y el modelo de spaCy (offline).
 setup:
@@ -17,6 +17,10 @@ setup:
 ## Recolecta el snapshot REAL (RSS, sitemaps, GDELT, Banco Mundial, USGS, INEC/SBP).
 data:
 	$(PY) -m faro.cli data
+
+## Recolecta SOLO GDELT (con caché) y rearma noticias.jsonl uniendo TVN + GDELT.
+data-gdelt:
+	$(PY) -m faro.cli data-gdelt
 
 ## Prueba rápida de recolección (TVN, un mes, en carpeta temporal).
 data-smoke:

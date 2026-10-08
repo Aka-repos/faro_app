@@ -48,6 +48,15 @@ def _cmd_data(args) -> None:
         print(json.dumps(res["por_fuente"], ensure_ascii=False, indent=2))
 
 
+def _cmd_data_gdelt(args) -> None:
+    """`make data-gdelt`: solo GDELT (con caché) y rearma noticias.jsonl."""
+    from faro.scrape.collect import recolectar_gdelt_solo
+
+    res = recolectar_gdelt_solo()
+    print("GDELT recolectado y noticias.jsonl rearmado:")
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+
+
 def _cmd_data_seed(args) -> None:
     """Escribe el seed sintético SOLO si FARO_DATA_DIR apunta fuera de data/ (protección)."""
     from pathlib import Path
@@ -422,6 +431,7 @@ def main() -> None:
     p_data.add_argument("--fuentes", help="ids separados por coma (subconjunto)")
     p_data.add_argument("--meses", help="meses AAAA-MM separados por coma (subconjunto)")
     p_data.add_argument("--prueba", action="store_true", help="escribir en carpeta temporal")
+    sub.add_parser("data-gdelt")
     sub.add_parser("data-seed")
     sub.add_parser("freeze")
     sub.add_parser("verify")
@@ -440,6 +450,7 @@ def main() -> None:
     args = p.parse_args()
     {
         "data": _cmd_data,
+        "data-gdelt": _cmd_data_gdelt,
         "data-seed": _cmd_data_seed,
         "freeze": _cmd_freeze,
         "verify": _cmd_verify,

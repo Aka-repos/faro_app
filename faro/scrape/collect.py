@@ -435,13 +435,7 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     noticias, reporte = _recolectar_noticias(cfg, client, desde, hasta)
 
     # Deduplicar y guardar incrementalmente ANTES de las fuentes oficiales.
-    por_url: dict[str, dict] = {}
-    for n in noticias:
-        nu = normalize_url(n["url"])
-        actual = por_url.get(nu)
-        if actual is None or (n.get("fecha_publicacion") and not actual.get("fecha_publicacion")):
-            por_url[nu] = n
-    noticias = list(por_url.values())
+    noticias = _dedup_noticias(noticias)
     _escribir("noticias.jsonl", noticias)
     _escribir_reporte_parcial(reporte, len(noticias))
     print(f"[{_time.time() - t0:6.1f}s] Noticias: {len(noticias)} (guardadas en noticias.jsonl).")
@@ -487,6 +481,65 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
         json.dumps(resumen, ensure_ascii=False, indent=2, default=str)
     )
     print(f"[{_time.time() - t0:6.1f}s] Reporte final en reports/recoleccion_{ts}.json.")
+    return resumen
+
+
+def _dedup_noticias(noticias: list[dict]) -> list[dict]:
+    """Deduplica por URL normalizada, conservando la que tenga fecha de publicación."""
+    por_url: dict[str, dict] = {}
+    for n in noticias:
+        nu = normalize_url(n["url"])
+        actual = por_url.get(nu)
+        if actual is None or (n.get("fecha_publicacion") and not actual.get("fecha_publicacion")):
+            por_url[nu] = n
+    return list(por_url.values())
+
+
+def recolectar_gdelt_solo(desde=None, hasta=None) -> dict:
+    """`make data-gdelt`: corre SOLO GDELT (con caché) y rearma noticias.jsonl (TVN + GDELT).
+
+    No vuelve a pedir TVN, Banco Mundial ni USGS.
+    """
+    import time as _time
+
+    desde = desde or S.VENTANA_INICIO
+    hasta = hasta or S.VENTANA_FIN
+    S.ensure_dirs()
+    t0 = _time.time()
+
+    gdelt_noticias, g = _recolectar_gdelt(desde, hasta)
+
+    # Cargar noticias existentes y quitar las de GDELT (se reemplazan).
+    existentes: list[dict] = []
+    path = S.RAW_DIR / "noticias.jsonl"
+    if path.exists():
+        for linea in path.read_text(encoding="utf-8").splitlines():
+            if not linea.strip():
+                continue
+            try:
+                n = json.loads(linea)
+            except json.JSONDecodeError:
+                continue
+            if n.get("via") != "gdelt":
+                existentes.append(n)
+
+    todas = _dedup_noticias(existentes + gdelt_noticias)
+    _escribir("noticias.jsonl", todas)
+
+    resumen = {
+        "fecha": datetime.now(UTC).isoformat(),
+        "duracion_s": round(_time.time() - t0, 1),
+        "conteos": {"noticias": len(todas), "nuevas_gdelt": len(gdelt_noticias)},
+        "gdelt": g,
+    }
+    ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    (S.REPORTS_DIR / f"data_gdelt_{ts}.json").write_text(
+        json.dumps(resumen, ensure_ascii=False, indent=2, default=str)
+    )
+    print(
+        f"[{_time.time() - t0:6.1f}s] noticias.jsonl rearmado: {len(todas)} total "
+        f"({len(gdelt_noticias)} nuevas de GDELT)."
+    )
     return resumen
 
 
