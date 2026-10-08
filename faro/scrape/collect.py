@@ -16,12 +16,13 @@ from faro.scrape import apis, html, oficiales, politeness, rss, sitemap
 
 
 def _meses(desde, hasta) -> list[tuple[str, str]]:
+    """Meses entre `desde` y `hasta` (hasta EXCLUSIVO)."""
     import calendar
 
     out = []
     y, m = desde.year, desde.month
     fin = (hasta.year, hasta.month)
-    while (y, m) <= fin:
+    while (y, m) < fin:
         ultimo = calendar.monthrange(y, m)[1]
         out.append((f"{y:04d}{m:02d}01000000", f"{y:04d}{m:02d}{ultimo:02d}235959"))
         m += 1
