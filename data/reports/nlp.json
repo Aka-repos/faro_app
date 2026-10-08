@@ -1,0 +1,31 @@
+{
+  "n_etiquetas": 146,
+  "n_excluidas": 104,
+  "n_pares": 50,
+  "metodo_etiquetado": "Temas (250 titulares): (a) 30 etiquetados a ciegas e independientemente por dos personas; acuerdo inicial aproximado 21/30 (~9 desacuerdos) resueltos por consenso; no se conservó el registro previo al consenso, por lo que no se reporta kappa. (b) 120 pre-etiquetados por un LLM (Claude) distinto del clasificador evaluado y revisados fila por fila por una persona (4 corregidos). (c) 100 adicionales, muestreados para cubrir temas con pocos ejemplos, pre-etiquetados por el mismo LLM y revisados por una persona (0 corregidos, declarado por el revisor). Pares (50): etiquetados a mano (mismo evento sí/no). Taxonomía: los 6 temas del reto (sección 6, etapa 2) + 'excluir'.",
+  "etiquetadores": [
+    "Andrés Vega",
+    "compañero de equipo"
+  ],
+  "fecha": "2026-10-08",
+  "embedder": "intfloat/multilingual-e5-small",
+  "ner": "es_core_news_md",
+  "macro_f1_lr": 0.6813,
+  "macro_f1_baseline": 0.504,
+  "mejora": 0.1773,
+  "n_splits_cv": 5,
+  "clases_excluidas_cv": [],
+  "clases": [
+    "economia",
+    "eventos_naturales",
+    "logistica",
+    "regulacion",
+    "servicios_publicos",
+    "turismo"
+  ],
+  "acuerdo_entre_etiquetadores": {
+    "kappa": 1.0,
+    "coinciden": 30,
+    "n": 30
+  }
+}

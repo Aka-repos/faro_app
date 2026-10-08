@@ -57,3 +57,10 @@ Registro de fecha/hora, qué se hizo, qué falló y qué se decidió. Se copia a
 | 21:56 | M3 | `lenses/_llm.py`; paquete/boletín/fichas con LLM + verificador + límites; vista Paquete muestra proveedor | 5 tests con LLM simulado | Ollama local activo hizo fallar el test de "sin proveedor"; se simuló sin Ollama |
 | 21:58 | M4 | `app/acciones.py`; contexto real; botón "Probar conexión"; plan fijo si herramientas=False | acciones aplicadas y visibles | — |
 | 22:15 | M5.1 + M7.1 | Métricas contradicción/inyección/Precision@5/costo; cobertura 0/0; sample-claims y editor-candidatos; torch CPU + es-core-news-md fijado | uv lock regenerado (169 paquetes) | — |
+
+## 2026-10-08 — Revisiones humanas
+
+| Hora (Panamá) | Tarea | Qué se hizo | Resultado | Qué falló / se decidió |
+| --- | --- | --- | --- | --- |
+| 13:35 | H-4 | Revisión manual de 20 URLs de `data/reports/muestra_urls.csv` (existencia, título y fecha) | 20/20 correctas | Pendiente: cotejo de 3 valores del Banco Mundial |
+| 13:40 | H-5 | Etiquetado de temas: 250 titulares (30 a ciegas por 2 personas + consenso; 120 asistidos, 4 corregidos; 100 extra asistidos, 0 corregidos) y 50 pares. Archivos: data/labels/temas.csv, pares.csv, metodo.json | 250 temas (excluir 104, eventos_naturales 58, logistica 22, servicios_publicos 21, economia 17, regulacion 14, turismo 14); 50 pares (7 si) | Sin kappa: no se conservó el registro previo al consenso (acuerdo inicial aprox. 21/30) |
