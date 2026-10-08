@@ -52,6 +52,25 @@ def cargar_fuentes(conn) -> None:
     db.upsert(conn, "fuente", filas)
 
 
+def _normalizar_medios(noticias: list[dict]) -> None:
+    """Normaliza `medio` desde `dominio` (sin tocar data/raw).
+
+    Los snapshots recolectados antes de ampliar `medios.py` traen el dominio como
+    medio (p.ej. 'critica.com.pa'); aquí se reemplaza por el nombre legible. Las
+    fuentes institucionales (.gob.pa) conservan el dominio y se marcan vía
+    `es_institucional(dominio)` en procedencias/reportes.
+    """
+    from faro.scrape.medios import normalizar_medio
+
+    for n in noticias:
+        dominio = n.get("dominio", "")
+        if not dominio:
+            continue
+        norm = normalizar_medio(dominio)
+        if norm:
+            n["medio"] = norm[1]
+
+
 def _fecha_min_max(noticias: list[dict]) -> tuple[str, str]:
     fechas = [fecha_efectiva(n) for n in noticias if fecha_efectiva(n)]
     if not fechas:
@@ -87,6 +106,7 @@ def ingesta(conn) -> dict:
         raise RuntimeError("data/raw vacío: corre `make data`")
 
     validados = validate.validar_todo(raw)
+    _normalizar_medios(validados["noticia"])
     cargar_fuentes(conn)
 
     # Clasificar tema (cambios 5 y 7): un solo Embedder, un lote de titulares,
