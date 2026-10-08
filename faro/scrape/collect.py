@@ -135,6 +135,9 @@ def _recolectar_noticias(fuentes, client, desde, hasta) -> tuple[list[dict], dic
         if f.get("familia") != "noticias" or f["id"] == "gdelt":
             continue
         fid = f["id"]
+        if f.get("deshabilitado"):
+            reporte[fid] = {"deshabilitado": True, "motivo": f.get("motivo_deshabilitado", "")}
+            continue
         reporte[fid] = {
             "intentos": 0,
             "ok": 0,
