@@ -23,9 +23,23 @@
     "servicios_publicos",
     "turismo"
   ],
-  "acuerdo_entre_etiquetadores": {
-    "kappa": 1.0,
-    "coinciden": 30,
-    "n": 30
+  "clases_modelo_produccion": [
+    "economia",
+    "eventos_naturales",
+    "logistica",
+    "regulacion",
+    "servicios_publicos",
+    "sin_tema",
+    "turismo"
+  ],
+  "pares_agrupamiento": {
+    "precision": 0.28,
+    "recall": 1.0,
+    "f1": 0.438,
+    "vp": 7,
+    "fp": 18,
+    "fn": 0,
+    "vn": 25,
+    "pares_sin_evento": 0
   }
 }

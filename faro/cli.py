@@ -270,8 +270,20 @@ def _cmd_eval_nlp(args) -> None:
 
     models_dir = S.REPO_ROOT / "models"
     models_dir.mkdir(exist_ok=True)
+    # Modelo de producción: entrena también con las filas "excluir" como "sin_tema", para que el
+    # pipeline pueda dejar sin tema lo que no pertenece a los 6 temas del reto (deportes, diplomacia…).
+    # La métrica macro-F1 de arriba se mide solo sobre los 6 temas.
+    titulares_prod = [r["titulo"] for r in filas]
+    etiquetas_prod = [
+        "sin_tema" if r["tema"].strip() == "excluir" else r["tema"].strip() for r in filas
+    ]
+    matriz_prod = embed.Embedder().encode(titulares_prod)
+    clf_prod = LogisticRegression(max_iter=1000, class_weight="balanced")
+    clf_prod.fit(matriz_prod, etiquetas_prod)
+    joblib.dump(
+        {"modelo": clf_prod, "clases": list(clf_prod.classes_)}, models_dir / "tema_lr.joblib"
+    )
     clf.fit(matriz, etiquetas)
-    joblib.dump({"modelo": clf, "clases": list(clf.classes_)}, models_dir / "tema_lr.joblib")
 
     # Cambio 6: método de etiquetado declarado en metodo.json (si no, "no declarado").
     metodo_path = S.LABELS_DIR / "metodo.json"
@@ -293,6 +305,7 @@ def _cmd_eval_nlp(args) -> None:
         "n_splits_cv": n_splits,
         "clases_excluidas_cv": clases_raras,
         "clases": list(clf.classes_),
+        "clases_modelo_produccion": list(clf_prod.classes_),
     }
 
     # Cambio 6: kappa de Cohen si existen ciego_A.csv y ciego_C.csv.
@@ -324,6 +337,44 @@ def _cmd_eval_nlp(args) -> None:
     from faro.pipeline import build
 
     build()
+
+    # Pares: precisión/recall del agrupamiento contra las etiquetas humanas (sección 9.1).
+    from faro import db as _db
+
+    conn = _db.connect()
+    ev = {
+        r["noticia_id"]: r["evento_id"]
+        for r in _db.fetchall(conn, "SELECT noticia_id, evento_id FROM evento_noticia")
+    }
+    conn.close()
+    tp = fp = fn = tn = 0
+    sin_evento = 0
+    for r in pares:
+        ea, eb = ev.get(r["id_a"]), ev.get(r["id_b"])
+        if ea is None or eb is None:
+            sin_evento += 1
+            continue
+        pred = ea == eb
+        real = r["mismo_evento"].strip().lower() == "si"
+        tp += pred and real
+        fp += pred and not real
+        fn += (not pred) and real
+        tn += (not pred) and (not real)
+    prec = tp / (tp + fp) if (tp + fp) else 0.0
+    rec = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
+    report["pares_agrupamiento"] = {
+        "precision": round(prec, 3),
+        "recall": round(rec, 3),
+        "f1": round(f1, 3),
+        "vp": tp,
+        "fp": fp,
+        "fn": fn,
+        "vn": tn,
+        "pares_sin_evento": sin_evento,
+    }
+    (S.REPORTS_DIR / "nlp.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
+    print("Pares (agrupamiento):", json.dumps(report["pares_agrupamiento"], ensure_ascii=False))
 
 
 def _muestrear_extra(
