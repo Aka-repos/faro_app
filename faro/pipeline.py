@@ -57,10 +57,10 @@ def _normalizar_medios(noticias: list[dict]) -> None:
 
     Los snapshots recolectados antes de ampliar `medios.py` traen el dominio como
     medio (p.ej. 'critica.com.pa'); aquí se reemplaza por el nombre legible. Las
-    fuentes institucionales (.gob.pa) conservan el dominio y se marcan vía
+    fuentes institucionales (.gob.pa) reciben nombre legible pero se marcan vía
     `es_institucional(dominio)` en procedencias/reportes.
     """
-    from faro.scrape.medios import normalizar_medio
+    from faro.scrape.medios import nombre_institucional, normalizar_medio
 
     for n in noticias:
         dominio = n.get("dominio", "")
@@ -69,6 +69,10 @@ def _normalizar_medios(noticias: list[dict]) -> None:
         norm = normalizar_medio(dominio)
         if norm:
             n["medio"] = norm[1]
+            continue
+        inst = nombre_institucional(dominio)
+        if inst:
+            n["medio"] = inst
 
 
 def _fecha_min_max(noticias: list[dict]) -> tuple[str, str]:

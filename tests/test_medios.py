@@ -51,10 +51,35 @@ def test_normalizar_medio_en_ingesta():
         {"dominio": "critica.com.pa", "medio": "critica.com.pa"},
         {"dominio": "www.rpctv.com", "medio": "www.rpctv.com"},
         {"dominio": "mire.gob.pa", "medio": "mire.gob.pa"},
+        {"dominio": "asamblea.gob.pa", "medio": "asamblea.gob.pa"},
         {"dominio": "", "medio": "sin-dominio"},
     ]
     _normalizar_medios(noticias)
     assert noticias[0]["medio"] == "Crítica"
     assert noticias[1]["medio"] == "RPC"
-    assert noticias[2]["medio"] == "mire.gob.pa"  # institucional conserva el dominio
-    assert noticias[3]["medio"] == "sin-dominio"  # sin dominio no se toca
+    assert noticias[2]["medio"] == "Cancillería (MIRE)"  # institucional con nombre legible
+    assert noticias[3]["medio"] == "Asamblea Nacional"
+    assert noticias[4]["medio"] == "sin-dominio"  # sin dominio no se toca
+
+
+def test_titular_no_informativo_a_cuarentena():
+    from faro.quality.validate import validar_noticia
+
+    for titulo in (
+        "Preview - Asamblea de Panamá",
+        "Las 5 noticias que debes leer hoy",
+        "Las 5 noticias que marcan el día",
+        "Confabulario",
+    ):
+        raw = {
+            "tipo": "noticia",
+            "id": "x",
+            "fuente_id": "tvn",
+            "titulo": titulo,
+            "url": "https://a.b/x",
+            "medio": "TVN Panamá",
+            "fecha_publicacion": "2026-01-15T00:00:00+00:00",
+        }
+        rec, motivo = validar_noticia(raw)
+        assert rec is None
+        assert motivo == "titular_no_informativo"

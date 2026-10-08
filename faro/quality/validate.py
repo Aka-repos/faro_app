@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 from pydantic import ValidationError
 
 import config.settings as S
+from faro.loaders import load_filtros
 from schemas import Indicador, RegistroNoticia, SerieOficial, Sismo
 
 
@@ -44,6 +45,12 @@ def _en_ventana(dt: datetime | None) -> bool:
 
 def validar_noticia(raw: dict) -> tuple[dict | None, str | None]:
     """Valida una noticia cruda. Devuelve (registro_normalizado|None, motivo_rechazo|None)."""
+    # Titulares no informativos (patrones configurables) -> cuarentena.
+    titulo = (raw.get("titulo") or "").strip().lower()
+    for pat in load_filtros().get("titulares_no_informativos", []):
+        if pat.lower() in titulo:
+            return None, "titular_no_informativo"
+
     # Fecha de publicación obligatoria y válida (T01: separar errores).
     pub = _iso_utc(raw.get("fecha_publicacion"))
     if raw.get("fecha_publicacion") and pub is None:

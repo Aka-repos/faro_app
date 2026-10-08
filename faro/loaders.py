@@ -37,5 +37,10 @@ def load_sectores() -> list[dict[str, Any]]:
 
 
 @functools.lru_cache(maxsize=32)
+def load_filtros() -> dict[str, Any]:
+    return _load_yaml(S.CONFIG_DIR / "filtros.yaml")
+
+
+@functools.lru_cache(maxsize=32)
 def load_lente(lente: str) -> dict[str, Any]:
     return _load_yaml(S.CONFIG_DIR / "lentes" / f"{lente}.yaml")

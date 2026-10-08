@@ -1,0 +1,8 @@
+# Patrones de titulares no informativos (se descartan a cuarentena).
+# La coincidencia es por subcadena, sin distinguir mayúsculas.
+version: 1
+titulares_no_informativos:
+  - "Preview - Asamblea de Panamá"
+  - "Las 5 noticias que debes leer hoy"
+  - "Las 5 noticias que marcan el día"
+  - "Confabulario"

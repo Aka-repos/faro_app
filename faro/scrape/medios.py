@@ -60,3 +60,19 @@ def es_institucional(dominio: str) -> bool:
     """True si el dominio es una fuente institucional (.gob.pa), no un medio periodístico."""
     dom = (dominio or "").lower().strip()
     return dom == "gob.pa" or dom.endswith(".gob.pa")
+
+
+# Nombres legibles de fuentes institucionales (siguen siendo institucionales).
+_INSTITUCIONALES = {
+    "mire.gob.pa": "Cancillería (MIRE)",
+    "asamblea.gob.pa": "Asamblea Nacional",
+}
+
+
+def nombre_institucional(dominio: str) -> str | None:
+    """Nombre legible de una fuente institucional, o None si no está en el mapa."""
+    dom = (dominio or "").lower().strip()
+    for d, nombre in _INSTITUCIONALES.items():
+        if _coincide(dom, d):
+            return nombre
+    return None
