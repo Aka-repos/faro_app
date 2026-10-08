@@ -378,6 +378,7 @@ def main() -> None:
     sub.add_parser("demo-offline")
     sub.add_parser("demo-cache")
     sub.add_parser("notion-sync")
+    sub.add_parser("muestra-urls")
 
     args = p.parse_args()
     {
@@ -393,6 +394,7 @@ def main() -> None:
         "demo-offline": _cmd_demo_offline,
         "demo-cache": _cmd_demo_cache,
         "notion-sync": _cmd_notion_sync,
+        "muestra-urls": _cmd_muestra_urls,
     }[args.cmd](args)
 
 
@@ -400,6 +402,30 @@ def _cmd_notion_sync(args) -> None:
     from faro.review import notion_sync
 
     print(json.dumps(notion_sync.sync_notion(), ensure_ascii=False, indent=2))
+
+
+def _cmd_muestra_urls(args) -> None:
+    """M2.4: exporta 20 URLs al azar (semilla fija) para revisión humana."""
+    import csv
+    import random
+
+    from faro import db
+
+    S.ensure_dirs()
+    conn = db.connect()
+    rows = db.fetchall(
+        conn, "SELECT id, medio, titulo, fecha_publicacion, url FROM noticia ORDER BY RANDOM()"
+    )
+    conn.close()
+    rng = random.Random(42)
+    muestra = rng.sample(rows, min(20, len(rows)))
+    path = S.REPORTS_DIR / "muestra_urls.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["noticia_id", "medio", "titulo", "fecha_publicacion", "url", "ok", "motivo"])
+        for r in muestra:
+            w.writerow([r["id"], r["medio"], r["titulo"], r["fecha_publicacion"], r["url"], "", ""])
+    print(f"Muestra de {len(muestra)} URLs escrita en {path}")
 
 
 if __name__ == "__main__":
