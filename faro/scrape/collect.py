@@ -31,6 +31,19 @@ def _meses(desde, hasta) -> list[tuple[str, str]]:
     return out
 
 
+def _en_ventana(fecha: str | None) -> bool:
+    """True si la fecha ISO está en [VENTANA_INICIO, VENTANA_FIN); sin fecha -> True."""
+    if not fecha:
+        return True
+    try:
+        dt = datetime.fromisoformat(str(fecha).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return S.VENTANA_INICIO <= dt < S.VENTANA_FIN
+    except ValueError:
+        return True  # la valida validate.py
+
+
 def _recolectar_sitemap(f, client, noticias, reporte) -> None:
     """Sitemap acotado (M1.4): respeta max_articulos/max_subsitemaps y news:title."""
     fid = f["id"]
@@ -150,8 +163,15 @@ def _recolectar_noticias(fuentes, client, desde, hasta) -> tuple[list[dict], dic
             reporte[fid]["intentos"] += 1
             try:
                 filas = rss.parse_rss(f["rss_url"], fuente_id=fid, medio=f["nombre"], client=client)
-                noticias.extend(filas)
-                reporte[fid]["ok"] += len(filas)
+                # Punto 6: descartar ítems fuera de ventana al recolectar (no solo en validación).
+                dentro, fuera = [], []
+                for x in filas:
+                    fecha = x.get("fecha_publicacion") or x.get("fecha_deteccion")
+                    (dentro if _en_ventana(fecha) else fuera).append(x)
+                reporte[fid]["omitidas_fuera_de_ventana"] += len(fuera)
+                noticias.extend(dentro)
+                reporte[fid]["ok"] += len(dentro)
+                print(f"    {fid}: RSS {len(dentro)} dentro de ventana, {len(fuera)} fuera")
             except Exception as e:  # noqa: BLE001
                 reporte[fid]["errores"] += 1
                 reporte[fid].setdefault("error", str(e)[:120])
