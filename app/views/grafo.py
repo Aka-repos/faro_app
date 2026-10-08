@@ -41,9 +41,11 @@ def _config_obsidian() -> Config:
         height=640,
         directed=True,
         physics=True,
-        nodeHighlightBehavior=True,
-        highlightColor="#FFD54F",
     )
+    # `groups` y las opciones de resaltado no son válidas para vis-network tal
+    # cual; sin este ajuste la consola del navegador las rechaza en cada render.
+    config.groups = {}
+    config.interaction = {"hover": True, "hoverConnectedEdges": True}
     # Reemplazamos el dict de física por la estructura correcta de vis-network.
     config.physics = {
         "enabled": True,
@@ -80,13 +82,21 @@ def render(lente: str) -> None:
     evento_id = st.selectbox(
         "Alcance",
         opciones,
-        index=0,
+        index=1 if len(opciones) > 1 else 0,
         format_func=lambda i: (
             "🕸️ Grafo completo (todo el corpus)"
             if i == "__todos__"
             else ev.loc[ev["id"] == i, "titulo_canonico"].iloc[0][:70]
         ),
     )
+
+    if evento_id == "__todos__":
+        st.warning(
+            "El grafo completo del corpus tiene miles de nodos y puede congelar el "
+            "navegador al renderizarse. Confirma si quieres cargarlo igual."
+        )
+        if not st.checkbox("Sí, cargar el grafo completo (puede tardar)"):
+            return
 
     G = construir_grafo(conectar(), evento_id=None if evento_id == "__todos__" else evento_id)
 

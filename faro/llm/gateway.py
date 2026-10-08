@@ -48,7 +48,7 @@ def detectar_capacidades(proveedor: str, modelo: str, api_key: str) -> dict:
             proveedor,
             modelo,
             api_key,
-            timeout=10,
+            timeout=30,
             tools=[
                 {
                     "type": "function",
@@ -72,7 +72,7 @@ def detectar_capacidades(proveedor: str, modelo: str, api_key: str) -> dict:
             proveedor,
             modelo,
             api_key,
-            timeout=10,
+            timeout=30,
             response_format={
                 "name": "ok",
                 "schema": {"type": "object", "properties": {"ok": {"type": "boolean"}}},
@@ -147,7 +147,7 @@ def generate(
                     modelo,
                     api_key,
                     base_url,
-                    timeout=20,
+                    timeout=60,
                     tools=tools,
                     response_format=response_format,
                 )
@@ -192,7 +192,7 @@ def generate(
                             modelo,
                             api_key,
                             base_url,
-                            timeout=20,
+                            timeout=60,
                             response_format=response_format,
                         )
                     elif etapa == "local":

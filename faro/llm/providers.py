@@ -52,7 +52,7 @@ def call_litellm(
     modelo: str,
     api_key: str,
     base_url: str | None = None,
-    timeout: int = 20,
+    timeout: int = 60,
     tools: list[dict] | None = None,
     response_format: dict | None = None,
 ) -> dict:
