@@ -65,12 +65,15 @@ def _tema_mayoritario(noticias: list[dict]) -> str:
 
 
 def _cargar_clasificador_tema():
-    """Carga models/tema_lr.joblib si existe (entrenado con etiquetas humanas, WP-3)."""
+    """Carga models/tema_lr.joblib ({"modelo": clf, "clases": [...]} o clf desnudo)."""
     import joblib
 
     path = S.REPO_ROOT / "models" / "tema_lr.joblib"
     if path.exists():
-        return joblib.load(path)
+        obj = joblib.load(path)
+        if isinstance(obj, dict) and "modelo" in obj:
+            return obj["modelo"]
+        return obj
     return None
 
 
@@ -86,17 +89,17 @@ def ingesta(conn) -> dict:
     validados = validate.validar_todo(raw)
     cargar_fuentes(conn)
 
-    # Clasificar tema: usa el modelo guardado (models/tema_lr.joblib) si existe; si no, baseline.
+    # Clasificar tema (cambio 5 y 7): siempre reclasifica con el modelo si existe,
+    # si no con el baseline. No reutiliza un tema previo del baseline.
     tema_modelo = _cargar_clasificador_tema()
     for n in validados["noticia"]:
-        if not n.get("tema"):
-            if tema_modelo is not None:
-                vec = embed.Embedder().encode([n["titulo"]])
-                n["tema"] = classify.predecir(tema_modelo, vec)[0]
-                n["tema_conf"] = float(tema_modelo.predict_proba(vec).max())
-            else:
-                n["tema"] = classify.clasificar_baseline(n["titulo"])
-                n["tema_conf"] = None
+        if tema_modelo is not None:
+            vec = embed.Embedder().encode([n["titulo"]])
+            n["tema"] = classify.predecir(tema_modelo, vec)[0]
+            n["tema_conf"] = float(tema_modelo.predict_proba(vec).max())
+        else:
+            n["tema"] = classify.clasificar_baseline(n["titulo"])
+            n["tema_conf"] = None
 
     db.upsert(conn, "noticia", validados["noticia"])
     db.upsert(conn, "serie_oficial", validados["serie_oficial"])

@@ -60,13 +60,19 @@ _SEED = [
 ]
 
 
-def cargar_benchmark(split: str = "dev") -> list[dict]:
-    """Carga data/benchmark.jsonl (dev) o data/benchmark_reservado.jsonl (reservado).
-
-    El `_SEED` solo se usa en pruebas (nunca como fuente del benchmark real, WP-5).
+def cargar_benchmark(split: str = "dev", bench: str | None = None) -> list[dict]:
+    """Carga el benchmark: BENCH=<ruta> si se da; si no, data/benchmark.jsonl (dev)
+    o data/benchmark_reservado.jsonl (reservado). El `_SEED` solo para pruebas.
     """
-    nombre = "benchmark_reservado.jsonl" if split == "reservado" else "benchmark.jsonl"
-    path = S.DATA_DIR / nombre
+    if bench:
+        path = (
+            S.DATA_DIR.parent / bench
+            if not bench.startswith("/")
+            else __import__("pathlib").Path(bench)
+        )
+    else:
+        nombre = "benchmark_reservado.jsonl" if split == "reservado" else "benchmark.jsonl"
+        path = S.DATA_DIR / nombre
     if path.exists():
         out = []
         for line in path.read_text(encoding="utf-8").splitlines():

@@ -10,13 +10,38 @@ import config.settings as S
 
 def cobertura_citas(afirmaciones: list[dict]) -> dict:
     total = len(afirmaciones)
+    if total == 0:
+        return {
+            "metrica": "cobertura_citas",
+            "numerador": 0,
+            "denominador": 0,
+            "valor": None,
+            "nota": "0/0 · sin datos",
+            "fallos": [],
+        }
     con_evidencia = sum(1 for a in afirmaciones if a.get("evidencia_id"))
     return {
         "metrica": "cobertura_citas",
         "numerador": con_evidencia,
         "denominador": total,
-        "valor": (con_evidencia / total) if total else 0.0,
+        "valor": (con_evidencia / total),
         "fallos": [a for a in afirmaciones if not a.get("evidencia_id")],
+    }
+
+
+def latencia(casos: list[dict]) -> dict:
+    """Mediana y p95 de latencia (ms) sobre los casos con latencia registrada."""
+    import statistics
+
+    vals = sorted(c.get("latencia_ms") for c in casos if c.get("latencia_ms") is not None)
+    if not vals:
+        return {"metrica": "latencia", "n": 0, "mediana_ms": None, "p95_ms": None}
+    p95 = vals[int(len(vals) * 0.95) - 1] if len(vals) >= 20 else vals[-1]
+    return {
+        "metrica": "latencia",
+        "n": len(vals),
+        "mediana_ms": statistics.median(vals),
+        "p95_ms": p95,
     }
 
 

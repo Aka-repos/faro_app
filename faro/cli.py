@@ -124,6 +124,7 @@ def _cmd_build(args) -> None:
 
 def _cmd_eval(args) -> None:
     import os
+    import time
 
     from faro import db
     from faro.agent import loop
@@ -131,13 +132,15 @@ def _cmd_eval(args) -> None:
 
     split = os.environ.get("SPLIT", "dev")
     modo = os.environ.get("MODO", "determinista")
-    casos = benchmark.cargar_benchmark(split=split)
+    bench = os.environ.get("BENCH")  # cambio 8: ruta explícita al set reservado
+    casos = benchmark.cargar_benchmark(split=split, bench=bench)
     llm_cfg = {"modo": modo}
     if modo == "usuario":
         llm_cfg.update(proveedor=S.LLM_PROVEEDOR, modelo=S.LLM_MODELO, api_key=S.LLM_API_KEY)
     conn = db.connect()
     resultados = []
     for c in casos:
+        t0 = time.perf_counter()
         try:
             r = loop.consultar(
                 c["pregunta"], conn, lente=c.get("lente", "editorial"), llm_cfg=llm_cfg
@@ -145,20 +148,29 @@ def _cmd_eval(args) -> None:
             c["respuesta"] = r["respuesta"][:200]
             c["abstuvo"] = r["abstencion"]
             c["meta"] = r.get("meta", {})
+            c["afirmaciones"] = r.get("afirmaciones", [])
+            c["acciones"] = r.get("acciones", [])
+            c["traza"] = r.get("traza", [])
         except Exception as e:  # noqa: BLE001
             c["respuesta"] = f"error:{e}"
             c["abstuvo"] = True
+        c["latencia_ms"] = int((time.perf_counter() - t0) * 1000)
         resultados.append(c)
     conn.close()
+
+    todas_afirmaciones = [a for c in resultados for a in c.get("afirmaciones", [])]
     m = {
         "split": split,
         "modo": modo,
-        "casos": resultados,
         "abstencion": metrics.abstencion(resultados),
-        "cobertura_citas": metrics.cobertura_citas(
-            [a for c in resultados for a in c.get("afirmaciones", [])]
-        ),
+        "cobertura_citas": metrics.cobertura_citas(todas_afirmaciones),
+        "latencia": metrics.latencia(resultados),
     }
+    # Cambio 8: el set reservado NO imprime preguntas ni respuestas, solo agregados + IDs fallidos.
+    if split == "reservado" or bench:
+        m["n_casos"] = len(resultados)
+    else:
+        m["casos"] = resultados
     path = metrics.escribir_metricas(m)
     print(f"Métricas escritas en {path}")
     print(json.dumps(m["abstencion"], ensure_ascii=False, indent=2))
@@ -167,9 +179,8 @@ def _cmd_eval(args) -> None:
 def _cmd_eval_nlp(args) -> None:
     """Evaluación NLP NO circular: lee data/labels/temas.csv y pares.csv (etiquetas humanas)."""
     import csv
+    import json as _json
 
-    import numpy as np
-    from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import f1_score
     from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
@@ -187,48 +198,87 @@ def _cmd_eval_nlp(args) -> None:
 
     with open(temas_path, encoding="utf-8") as fh:
         filas = [r for r in csv.DictReader(fh) if r.get("tema", "").strip()]
-    titulares = [r["titulo"] for r in filas]
-    etiquetas = [r["tema"].strip() for r in filas]
-    clases = sorted(set(etiquetas))
-    clase_idx = {c: i for i, c in enumerate(clases)}
-    y = np.array([clase_idx[e] for e in etiquetas])
-    matriz = embed.Embedder().encode(titulares)
+    etiquetas_todas = [r["tema"].strip() for r in filas]
+    # Cambio 5: etiquetas fuera de los 6 temas o "excluir" -> error.
+    invalidas = classify.validar_etiquetas(etiquetas_todas, filas)
+    if invalidas:
+        print("Error: etiquetas no permitidas:\n" + "\n".join(invalidas[:20]))
+        sys.exit(1)
+    # Filas "excluir" se quitan antes de entrenar y medir, y se cuentan.
+    filas_ok = [f for f in filas if f["tema"].strip() != "excluir"]
+    n_excluidas = len(filas) - len(filas_ok)
+    titulares = [r["titulo"] for r in filas_ok]
+    etiquetas = [r["tema"].strip() for r in filas_ok]
 
+    matriz = embed.Embedder().encode(titulares)
     baseline = [classify.clasificar_baseline(t) for t in titulares]
     macro_baseline = f1_score(etiquetas, baseline, average="macro")
 
-    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-    preds = cross_val_predict(clf, matriz, y, cv=StratifiedKFold(5, shuffle=True, random_state=42))
-    macro_lr = f1_score(y, preds, average="macro")
+    from sklearn.linear_model import LogisticRegression
 
-    # Entrenar el clasificador final y guardarlo para el pipeline.
+    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
+    preds = cross_val_predict(
+        clf, matriz, etiquetas, cv=StratifiedKFold(5, shuffle=True, random_state=42)
+    )
+    macro_lr = f1_score(etiquetas, preds, average="macro")
+
+    # Entrenar final con etiquetas string (clf.classes_ = fuente de verdad) y guardar dict.
     import joblib
 
     models_dir = S.REPO_ROOT / "models"
     models_dir.mkdir(exist_ok=True)
-    clf.fit(matriz, y)
-    joblib.dump(clf, models_dir / "tema_lr.joblib")
+    clf.fit(matriz, etiquetas)
+    joblib.dump({"modelo": clf, "clases": list(clf.classes_)}, models_dir / "tema_lr.joblib")
 
-    # Precisión/recall de pares (clustering): un par "mismo evento" si quedó en el mismo cluster.
-    with open(pares_path, encoding="utf-8") as fh:
-        pares = [r for r in csv.DictReader(fh) if r.get("mismo_evento", "").strip()]
-
+    # Cambio 6: método de etiquetado declarado en metodo.json (si no, "no declarado").
+    metodo_path = S.LABELS_DIR / "metodo.json"
+    metodo = {}
+    if metodo_path.exists():
+        metodo = _json.loads(metodo_path.read_text(encoding="utf-8"))
     report = {
         "n_etiquetas": len(etiquetas),
-        "n_pares": len(pares),
-        "metodo_etiquetado": "manual por los dos integrantes",
-        "etiquetadores": "[HUMANO]",
-        "fecha": __import__("datetime").datetime.now().isoformat(),
+        "n_excluidas": n_excluidas,
+        "n_pares": 0,
+        "metodo_etiquetado": metodo.get("metodo", "no declarado"),
+        "etiquetadores": metodo.get("etiquetadores", []),
+        "fecha": metodo.get("fecha") or __import__("datetime").datetime.now().isoformat(),
         "embedder": EMBEDDER_NAME,
         "ner": "es_core_news_md",
         "macro_f1_lr": round(float(macro_lr), 4),
         "macro_f1_baseline": round(float(macro_baseline), 4),
         "mejora": round(float(macro_lr) - float(macro_baseline), 4),
-        "clases": clases,
+        "clases": list(clf.classes_),
     }
+
+    # Cambio 6: kappa de Cohen si existen ciego_A.csv y ciego_C.csv.
+    ciego_a = S.LABELS_DIR / "ciego_A.csv"
+    ciego_c = S.LABELS_DIR / "ciego_C.csv"
+    if ciego_a.exists() and ciego_c.exists():
+        from sklearn.metrics import cohen_kappa_score
+
+        a = [r["tema"].strip() for r in csv.DictReader(open(ciego_a, encoding="utf-8"))]
+        c = [r["tema"].strip() for r in csv.DictReader(open(ciego_c, encoding="utf-8"))]
+        if len(a) == len(c) and a:
+            report["acuerdo_entre_etiquetadores"] = {
+                "kappa": round(float(cohen_kappa_score(a, c)), 3),
+                "coinciden": sum(x == y for x, y in zip(a, c, strict=False)),
+                "n": len(a),
+            }
+
+    # Pares (solo conteo, para el reporte).
+    with open(pares_path, encoding="utf-8") as fh:
+        pares = [r for r in csv.DictReader(fh) if r.get("mismo_evento", "").strip()]
+    report["n_pares"] = len(pares)
+
     S.ensure_dirs()
     (S.REPORTS_DIR / "nlp.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
     print(json.dumps(report, ensure_ascii=False, indent=2))
+
+    # Cambio 7: reclasificar las noticias con el modelo recién entrenado.
+    print("Reclasificando noticias (make build)...")
+    from faro.pipeline import build
+
+    build()
 
 
 def _cmd_labels_sample(args) -> None:
