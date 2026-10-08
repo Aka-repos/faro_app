@@ -96,7 +96,20 @@ def _cmd_verify(args) -> None:
 
 
 def _cmd_build(args) -> None:
+    import os
+
     from faro.pipeline import build
+
+    # Barrera M2.2: no construir con datos sintéticos (salvo tests).
+    if os.environ.get("FARO_PERMITIR_SINTETICO") != "1":
+        for f in S.RAW_DIR.glob("*.jsonl"):
+            for linea in f.read_text(encoding="utf-8").splitlines():
+                if '"sintetico": true' in linea:
+                    print(
+                        f"Error: {f.name} contiene registros sintéticos. Recolecta con `make data` "
+                        "o usa FARO_PERMITIR_SINTETICO=1 solo en pruebas."
+                    )
+                    sys.exit(1)
 
     res = build()
     print("Build OK:")
