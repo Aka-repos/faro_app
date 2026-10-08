@@ -23,6 +23,25 @@ def tema_label(tema: str | None) -> str:
     return "Sin clasificar" if tema in (None, "", "sin_tema") else tema
 
 
+def top_diverso(ev: pd.DataFrame, max_por_tema: int, n: int = 10) -> tuple[pd.DataFrame, bool]:
+    """Top n con máximo `max_por_tema` eventos por tema (mantiene el orden por P)."""
+    if ev.empty:
+        return ev, False
+    vistos: dict[str, int] = {}
+    filas = []
+    aplicada = False
+    for _, r in ev.iterrows():
+        tema = r.get("tema") or "sin_tema"
+        if vistos.get(tema, 0) >= max_por_tema:
+            aplicada = True
+            continue
+        vistos[tema] = vistos.get(tema, 0) + 1
+        filas.append(r)
+        if len(filas) >= n:
+            break
+    return pd.DataFrame(filas), aplicada
+
+
 def db_existe() -> bool:
     """True si la base existe y tiene al menos una noticia."""
     if not S.DB_PATH.exists():

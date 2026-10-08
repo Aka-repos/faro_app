@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db_ui import df_eventos, sin_datos, tema_label
+from app.db_ui import df_eventos, sin_datos, tema_label, top_diverso
+from faro.loaders import load_lente
 
 
 def render(lente: str) -> None:
@@ -22,7 +23,11 @@ def render(lente: str) -> None:
     if ev.empty:
         st.info("No hay eventos para este lente.")
         return
-    for _, r in ev.head(10).iterrows():
+    max_por_tema = int(load_lente(lente).get("diversidad", {}).get("max_por_tema", 3))
+    top, diversidad_aplicada = top_diverso(ev, max_por_tema, n=10)
+    if diversidad_aplicada:
+        st.caption(f"diversidad aplicada: máximo {max_por_tema} eventos por tema")
+    for _, r in top.iterrows():
         color = {"alto": "#c62828", "medio": "#f9a825", "bajo": "#2e7d32"}[r["rango"]]
         st.markdown(
             f"**P={r['P']}** · <span style='color:{color}'>● {r['rango']}</span> · "

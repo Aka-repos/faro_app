@@ -11,6 +11,9 @@ rangos:
   bajo: {min: 0, max: 40}
   medio: {min: 40, max: 70}
   alto: {min: 70, max: 100}
+# Diversidad en la Bandeja (top 10): máximo de eventos por tema.
+diversidad:
+  max_por_tema: 3
 tipos_afirmacion: [hecho, observacion, hipotesis]
 # Barreras del lente bancario: ninguna salida puede contener estas frases (B-06).
 frases_prohibidas:
