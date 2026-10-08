@@ -1,4 +1,5 @@
 """Punto 5: la ingesta limpia la Capa 1 antes de cargar (sin acumular cuarentena)."""
+
 from __future__ import annotations
 
 from faro import db
