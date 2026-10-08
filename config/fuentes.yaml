@@ -22,9 +22,9 @@ fuentes:
     nombre: "Telemetro"
     familia: noticias
     url_base: "https://www.telemetro.com/"
-    metodo: rss
-    rss_url: "https://www.telemetro.com/rss/"
-    sitemap_url: null
+    metodo: sitemap
+    rss_url: null
+    sitemap_url: "https://www.telemetro.com/sitemap.xml"
     dominios: ["telemetro.com", "www.telemetro.com"]
     max_articulos: 300
     max_subsitemaps: 24
@@ -32,7 +32,7 @@ fuentes:
     user_agent: null
     licencia: "Titulares y enlaces públicos"
     condiciones: "Solo metadatos y resumen publicado."
-    notas: "Corroboración y procedencias."
+    notas: "RSS da 404; se usa el sitemap (200, URLs de artículos)."
 
   - id: panama_america
     nombre: "Panamá América"
@@ -70,9 +70,9 @@ fuentes:
     nombre: "La Estrella de Panamá"
     familia: noticias
     url_base: "https://www.laestrella.com.pa/"
-    metodo: rss
-    rss_url: "https://www.laestrella.com.pa/rss/"
-    sitemap_url: null
+    metodo: sitemap
+    rss_url: null
+    sitemap_url: "https://www.laestrella.com.pa/sitemap.xml"
     dominios: ["laestrella.com.pa", "www.laestrella.com.pa"]
     max_articulos: 300
     max_subsitemaps: 24
@@ -80,7 +80,7 @@ fuentes:
     user_agent: null
     licencia: "Titulares y enlaces públicos"
     condiciones: "Solo metadatos y resumen publicado."
-    notas: ""
+    notas: "RSS da 404; se usa el sitemap (200)."
 
   - id: metro_libre
     nombre: "Metro Libre"
@@ -97,6 +97,8 @@ fuentes:
     licencia: "Titulares y enlaces públicos"
     condiciones: "Solo metadatos y resumen publicado."
     notas: ""
+    deshabilitado: true
+    motivo_deshabilitado: "sitemap.xml solo lista secciones (homepage/categorías), no URLs de artículos"
 
   - id: gdelt
     nombre: "GDELT DOC 2.0"
