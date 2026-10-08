@@ -10,6 +10,11 @@ if [ -z "$(ls -A data/raw/*.jsonl 2>/dev/null)" ]; then
   exit 1
 fi
 
+if grep -q '"sintetico": true' data/raw/*.jsonl 2>/dev/null; then
+  echo "ERROR: data/raw contiene registros sintéticos. Recolecta datos reales (make data)." >&2
+  exit 1
+fi
+
 echo "==> Construyendo base desde el snapshot real (offline)..."
 python -m faro.cli build
 

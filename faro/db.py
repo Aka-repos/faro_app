@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS noticia (
   tema_conf REAL,
   es_agencia INTEGER DEFAULT 0,
   agencia TEXT,
-  hash TEXT
+  hash TEXT,
+  via TEXT
 );
 
 CREATE TABLE IF NOT EXISTS serie_oficial (

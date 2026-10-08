@@ -63,6 +63,20 @@ with st.sidebar:
         "base_url": base_url.strip() or None,
         "modo": modo,
     }
+    if st.button("Probar conexión"):
+        from faro.llm import gateway
+
+        caps = gateway.detectar_capacidades(
+            st.session_state["llm"]["proveedor"],
+            st.session_state["llm"]["modelo"],
+            st.session_state["llm"]["api_key"],
+        )
+        st.session_state["llm"]["capacidades"] = caps
+        st.write(
+            f"JSON: {caps['json_esquema']} · Herramientas: {caps['herramientas']} · "
+            f"Precio: {caps['precio_conocido']}"
+        )
+
     if st.session_state["llm"]["proveedor"] and st.session_state["llm"]["modelo"]:
         st.caption(f"🟢 Modo activo: modelo del usuario ({st.session_state['llm']['proveedor']})")
     elif modo == "local":

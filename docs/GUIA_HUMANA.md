@@ -10,6 +10,11 @@ Todos los comandos se ejecutan en la Terminal de la Mac, dentro de la carpeta de
 cd ~/hackathon/tvn
 ```
 
+> **Alcance de esta versión (2026-10-07):** fuera de esta guía por ahora: Notion, pitch, video de respaldo y
+> publicaciones (antes H-11 y H-12). El correo de contacto (antes H-1) se eliminó, y las preguntas reservadas
+> (H-7) ya no requieren trabajo humano. Los números H-x se mantienen para no romper las referencias de los
+> otros documentos.
+
 ---
 
 ## Resumen y orden
@@ -17,18 +22,15 @@ cd ~/hackathon/tvn
 | # | Tarea | Quién | Depende de | Tiempo |
 | --- | --- | --- | --- | --- |
 | H-0 | Preparar la Mac (una sola vez) | A | — | 20 min |
-| H-1 | Poner el correo de contacto | A | Agente terminó M1.1 | 2 min |
-| H-2 | Transcribir series oficiales (INEC, ACP, SBP) | A y C | — (**empezar ya**) | 60–90 min |
+| H-2 | Transcribir series oficiales (INEC, ACP, SBP) | A y C (o Claude, ver nota) | — (**empezar ya**) | 60–90 min |
 | H-3 | Ejecutar la recolección real | A | Agente terminó M1 y M2.2 | 30–90 min (casi todo esperar) |
 | H-4 | Revisar 20 URLs y 3 valores del Banco Mundial | A | H-3 + agente M2.4 | 20 min |
-| H-5 | Etiquetar 150 titulares y 50 pares | A y C | H-3 | 60 min entre los dos |
+| H-5 | Etiquetar temas y pares (asistido + prueba de acuerdo) | A y C | H-3 | 40–50 min entre los dos |
 | H-6 | Revisar el benchmark de desarrollo (40) | A | Agente M5 (borrador) | 30 min |
-| H-7 | Escribir las 20 preguntas reservadas | **C** (A no las ve) | H-3 | 40 min |
+| H-7 | Preguntas reservadas | Claude (sin trabajo humano) | H-3 | 0 min |
 | H-8 | Probar con clave real y con Ollama | A | Agente M3 y M4 | 30 min |
 | H-9 | Revisar 30 afirmaciones | A y C | Primera corrida de `make eval` | 30 min |
 | H-10 | Selección del editor y prueba de tiempo (opcional, suma mucho) | A con un periodista | H-3 | 45 min |
-| H-11 | Notion: integración, acceso del jurado y página del pitch | A | Agente M7.2 | 60 min |
-| H-12 | Ensayos, video de respaldo y publicaciones | A y C | Todo lo anterior | 60 min + 10 min diarios |
 
 **Lo que pueden hacer hoy mismo sin esperar al agente:** H-0 y H-2.
 
@@ -54,21 +56,17 @@ cd ~/hackathon/tvn
 
 ---
 
-## H-1 · Correo de contacto (A, 2 min, cuando el agente cierre M1.1)
+## H-1 · Correo de contacto — ELIMINADA
 
-El scraping debe identificarse con un correo real del equipo.
-
-1. Abre `.env` y agrega o completa la línea:
-   ```
-   FARO_CONTACTO=tu-correo-real@dominio.com
-   ```
-2. Guarda. No lo pongas en ningún archivo que se suba a git.
-
-✅ **Quedó bien si:** `make data-smoke` (H-3, paso 2) ya no se queja por el contacto.
+El reto no lo exige. No hay nada que hacer.
 
 ---
 
 ## H-2 · Transcribir series oficiales (A y C, 60–90 min) — empezar ya
+
+> **Nota:** Claude puede hacer esta transcripción desde los sitios oficiales y dejarte los CSV para revisar.
+> En ese caso tu trabajo es solo el paso 8 (verificar dos filas por serie) y poner tu nombre en
+> `transcrito_por` solo en las filas que verificaste.
 
 **Por qué:** sin estas series no hay contexto oficial reciente (CU-02) ni lente bancario. El código no las puede
 descargar solo; se transcriben a mano y quedan trazables. **Nunca se estima ni se completa un mes que no esté
@@ -145,7 +143,7 @@ sintético". Si `data/raw/noticias.jsonl` todavía existe con datos sintéticos,
    caffeinate -i make data
    ```
    Puede tardar 30–90 minutos por las pausas obligatorias entre peticiones. **No cierres la tapa.**
-   Mientras corre puedes hacer H-2 o H-7.
+   Mientras corre puedes hacer H-2.
 5. Al terminar:
    ```bash
    make build
@@ -192,21 +190,52 @@ avisa al agente antes de seguir: hay un problema en el recolector.
 
 ---
 
-## H-5 · Etiquetar 150 titulares y 50 pares (A y C, 60 min entre los dos)
+## H-5 · Etiquetar temas y pares (A y C, 40–50 min entre los dos)
 
-**Por qué:** el reto exige comparar la IA contra un baseline usando etiquetas puestas por personas.
+### Para qué sirve
 
-1. Genera los archivos:
+FARO clasifica cada noticia en un tema y decide si dos noticias hablan del mismo evento. Para decir "la IA
+acierta el X %" y "supera al método simple de palabras clave" hace falta una **respuesta correcta** puesta por
+personas contra la cual comparar. Eso es la etiqueta. Sin ella, `make eval-nlp` no tiene con qué medir.
+
+El reto lo pide así (sección 9.1): *"reportar macro-F1 o precisión/recall sobre etiquetas humanas, incluyendo
+tamaño y método de etiquetado"*. No es condición de admisión, pero sostiene los 15 puntos de "Uso efectivo
+de IA".
+
+### Método elegido: pre-etiquetado asistido + revisión humana + prueba de acuerdo a ciegas
+
+| Parte | Filas | Quién | Con sugerencia | Para qué |
+| --- | --- | --- | --- | --- |
+| Bloque ciego | 30 titulares | A **y** C, cada uno por separado | **No** | Medir cuánto coinciden dos humanos (kappa) y detectar si la sugerencia sesga |
+| Bloque asistido | 120 titulares | Mitad A, mitad C | Sí (columna `sugerido`) | Rapidez: confirmar o corregir |
+| Pares | 50 pares | Mitad A, mitad C | No | Mismo evento sí/no (es rápido, no hace falta sugerencia) |
+
+Las sugerencias **no** las genera FARO: las pone Claude, que es un modelo distinto del clasificador que se
+evalúa. Si FARO se sugiriera a sí mismo, ustedes tenderían a aceptar su respuesta y la métrica saldría inflada.
+
+### Pasos
+
+1. Genera la muestra (después de H-3):
    ```bash
    make labels-sample
    ```
-   Se crean `data/labels/temas_pendientes.csv` (150 filas) y `data/labels/pares_pendientes.csv` (50 filas).
-2. Dividan: A etiqueta las filas 1–75 de temas y los pares 1–25; C las filas 76–150 y los pares 26–50.
-   Pueden abrirlos en Numbers, Excel o Google Sheets.
+   Se crean `data/labels/temas_pendientes.csv` (150 filas: `noticia_id,titulo,medio,tema`) y
+   `data/labels/pares_pendientes.csv` (50 filas: `id_a,titulo_a,id_b,titulo_b,mismo_evento`).
+2. Pásale `temas_pendientes.csv` a Claude (en esta conversación). Te devuelve tres archivos en `data/labels/`:
+   - `ciego_A.csv` y `ciego_C.csv`: las mismas 30 filas, **sin** sugerencia, columna `tema` vacía.
+   - `asistido.csv`: las otras 120 filas con columnas `noticia_id,titulo,medio,sugerido,tema`. `tema` va vacía.
+3. **Bloque ciego (10 min cada uno, por separado, sin hablar entre ustedes):** A llena `ciego_A.csv` y C llena
+   `ciego_C.csv`.
+4. **Bloque asistido (15 min cada uno):** A hace las filas 1–60 de `asistido.csv` y C las 61–120. En cada fila
+   lee **primero el titular** y luego mira `sugerido`. Si estás de acuerdo, copia el valor en `tema`; si no,
+   escribe el correcto. **Nunca dejes `tema` vacía ni la llenes en bloque copiando la columna entera.**
+5. **Pares (10 min cada uno):** A hace los pares 1–25 y C los 26–50 en `pares_pendientes.csv`.
+6. Abran los archivos en Numbers, Excel o Google Sheets y guárdenlos como **CSV UTF-8**, sin cambiar los
+   nombres de columna.
 
-### Temas: columna `tema`
+### Temas: valores permitidos en `tema`
 
-Escribe **exactamente** uno de estos 6 valores, en minúsculas y sin tildes. Cualquier otra palabra se cuenta mal:
+Escribe **exactamente** uno de estos valores, en minúsculas y sin tildes. Cualquier otra palabra se cuenta mal:
 
 | Valor | Cuándo usarlo |
 | --- | --- |
@@ -216,13 +245,12 @@ Escribe **exactamente** uno de estos 6 valores, en minúsculas y sin tildes. Cua
 | `servicios_publicos` | Agua, electricidad, salud pública, transporte público, educación pública, basura |
 | `eventos_naturales` | Lluvias, inundaciones, deslizamientos, sismos, sequía, incendios forestales |
 | `regulacion` | Leyes, decretos, resoluciones, decisiones de la Asamblea, tribunales, normas |
+| `excluir` | No encaja en ninguno (deportes, farándula, internacional sin relación con Panamá) |
 
 Reglas de desempate:
 - Si toca dos temas, elige el **principal del titular** (lo que pasó, no el contexto). "Lluvias retrasan
   tránsitos del Canal" → `logistica` si el foco es el Canal; `eventos_naturales` si el foco son las lluvias.
-- Si no encaja en ninguno (deportes, farándula, internacional sin relación con Panamá), escribe `excluir`. El
-  agente hará que esas filas no cuenten (ver el prompt). **No inventes un tema nuevo.**
-- No mires qué tema le pone FARO: etiqueta solo leyendo el titular.
+- **No inventes un tema nuevo.**
 
 ### Pares: columna `mismo_evento`
 
@@ -232,25 +260,39 @@ Escribe `si` o `no`.
 - `no` = mismo tema pero hechos distintos (dos noticias sobre el Canal de semanas diferentes, dos lluvias en
   provincias distintas).
 
-### Guardar y evaluar
+### Unir, medir el acuerdo y evaluar
 
-3. Unan las dos mitades en un solo archivo, con el mismo encabezado, y guárdenlo como:
-   - `data/labels/temas.csv`
-   - `data/labels/pares.csv`
-   (Excel: **CSV UTF-8**. No cambien los nombres de las columnas ni borren las columnas de ID.)
-4. Comprueben que no quedaron vacíos:
+7. Medir el acuerdo entre ustedes en el bloque ciego (kappa de Cohen: 1 = acuerdo total, 0 = azar):
    ```bash
-   awk -F, 'NR>1 && $NF==""' data/labels/temas.csv | wc -l     # debe dar 0
-   awk -F, 'NR>1 && $NF==""' data/labels/pares.csv | wc -l     # debe dar 0
+   uv run python -c "
+   import csv; from sklearn.metrics import cohen_kappa_score as k
+   a=[r['tema'].strip() for r in csv.DictReader(open('data/labels/ciego_A.csv'))]
+   c=[r['tema'].strip() for r in csv.DictReader(open('data/labels/ciego_C.csv'))]
+   print('kappa', round(k(a,c),3), '| coinciden', sum(x==y for x,y in zip(a,c)), 'de', len(a))"
    ```
-5. Corran:
-   ```bash
-   make eval-nlp
-   ```
-6. Anoten en la bitácora: quién etiquetó, cuántas filas cada uno, cuánto tardaron y cuántas marcaron `excluir`.
+   Referencia: ≥ 0,6 es acuerdo bueno; ≥ 0,8, muy bueno. Si sale menor de 0,6, revisen juntos las filas en que
+   no coincidieron, aclaren la regla y anoten la decisión en la bitácora.
+8. Resolver el bloque ciego: en las filas donde no coincidieron, decidan juntos un valor final.
+9. Armar `data/labels/temas.csv` (encabezado `noticia_id,titulo,medio,tema`) con las 30 filas ciegas
+   resueltas y las 120 asistidas (sin la columna `sugerido`). Guardar `pares_pendientes.csv` lleno como
+   `data/labels/pares.csv`. Claude o el agente pueden hacer esta unión si se lo piden.
+10. Comprobar que no quedaron vacíos:
+    ```bash
+    awk -F, 'NR>1 && $NF==""' data/labels/temas.csv | wc -l     # debe dar 0
+    awk -F, 'NR>1 && $NF==""' data/labels/pares.csv | wc -l     # debe dar 0
+    ```
+11. Correr:
+    ```bash
+    make eval-nlp
+    ```
+12. Anotar en la bitácora: quién etiquetó, cuántas filas cada uno, el kappa, cuántas sugerencias se
+    corrigieron en el bloque asistido y cuántas marcaron `excluir`. Así se declara el método:
+    *"150 titulares: 30 etiquetados a ciegas por dos personas (kappa = X) y 120 pre-etiquetados por un LLM
+    distinto del clasificador evaluado y revisados fila por fila por una persona (N corregidos); 50 pares
+    etiquetados a mano."*
 
-✅ **Quedó bien si:** `data/reports/nlp.json` muestra `n_etiquetas` cercano a 150 (menos las excluidas) y
-`embedder: intfloat/multilingual-e5-small`.
+✅ **Quedó bien si:** `data/reports/nlp.json` muestra `n_etiquetas` cercano a 150 (menos las excluidas),
+`embedder: intfloat/multilingual-e5-small`, y tienen el kappa anotado.
 
 ---
 
@@ -278,23 +320,22 @@ información externa.
 
 ---
 
-## H-7 · Escribir las 20 preguntas reservadas (C, 40 min) — A no debe verlas
+## H-7 · Preguntas reservadas — sin trabajo humano
 
-**Por qué:** simulan las preguntas que el jurado no le muestra al equipo. Si las escribe quien construyó el
-sistema, no miden nada.
+Según el reto (sección 11), el set reservado lo prepara la organización. Si el jurado trae el suyo, no hace falta
+nada más. Como prueba interna, Claude redacta 20 preguntas (10 `sustentada`, 4 `contradiccion`,
+3 `sin_respuesta`, 3 `adversarial`, `"split":"reservado"`) después de H-3, y las deja **fuera del proyecto**
+(`~/hackathon/faro-reservado/benchmark_reservado.jsonl`). Reglas:
 
-1. C abre la app (`make run`) y navega la Bandeja, las fichas y el Grafo para conocer los datos reales.
-2. Crea `data/benchmark_reservado.jsonl` (mismo formato que H-6) con **20** preguntas:
-   10 `sustentada`, 4 `contradiccion`, 3 `sin_respuesta`, 3 `adversarial`. `"split":"reservado"`.
-3. **No lo subas a git** (el agente lo agrega al `.gitignore`; confírmalo con `git status`: el archivo no debe
-   aparecer). Guarda una copia fuera del proyecto.
-4. No le cuentes a A el contenido. En la corrida final (M5.4), C ejecuta:
-   ```bash
-   make eval SPLIT=reservado MODO=usuario
-   ```
-   y comparte solo el reporte `data/reports/metrics_<fecha>.md`.
-
-✅ **Quedó bien si:** son 20, en esas proporciones, y A no las ha visto.
+- Nadie las lee ni las usa para ajustar prompts, reglas ni código.
+- Se corren una sola vez, al final (M5.4):
+  ```bash
+  make eval SPLIT=reservado MODO=usuario BENCH=~/hackathon/faro-reservado/benchmark_reservado.jsonl
+  ```
+  (si el agente no implementó `BENCH`, copia el archivo a `data/benchmark_reservado.jsonl`, corre, y bórralo
+  después; el agente debe agregar ese nombre al `.gitignore` — confírmalo con `git status`: el archivo no debe
+  aparecer).
+- Solo se mira el reporte `data/reports/metrics_<fecha>.md`.
 
 ---
 
@@ -367,68 +408,9 @@ Usa a un periodista o editor de confianza, **sin usar material ni sistemas inter
 
 ---
 
-## H-11 · Notion (A, 60 min) — cuando el agente cierre M7.2
+## H-11 y H-12 · Notion, pitch, video y publicaciones — fuera de esta guía por ahora
 
-### Crear la integración
-1. Con la cuenta de la licencia Business del evento, entra a **notion.so/profile/integrations** (Configuración →
-   Conexiones → "Desarrollar o administrar integraciones").
-2. **Nueva integración** → tipo **Interna** → nombre "FARO sync" → workspace del evento → Guardar.
-3. Copia el **secreto interno** (empieza con `ntn_` o `secret_`).
-4. En `.env`: `NOTION_TOKEN=<el secreto>`.
-
-### Crear la página raíz y conectarla
-5. En Notion crea una página "FARO — hackIAthon TVN Media".
-6. En esa página: menú **•••** (arriba a la derecha) → **Conexiones** → agrega "FARO sync".
-7. Copia el enlace de la página. El ID son los 32 caracteres finales de la URL (sin guiones). En `.env`:
-   `NOTION_PARENT_PAGE_ID=<esos 32 caracteres>`.
-
-### Sincronizar
-8. Ejecuta `make notion-sync`. Revisa en Notion que aparezcan las páginas y las bases: Tareas (≥ 8), Decisiones,
-   Catálogo, Fichas (≥ 5, una con evidencia insuficiente) y Pruebas (T01–T10).
-9. Vuelve a ejecutarlo cada vez que cierres un hito: actualiza sin duplicar.
-
-### Página del pitch (la arman ustedes)
-10. En la página "Presentación al jurado", usa este orden (10 minutos):
-    - **Problema y usuario** (1 min): el editor de mesa que arma la agenda.
-    - **Solución y datos** (1 min): fuentes y período; enlace al Catálogo.
-    - **Demo** (4 min): enlace a la app o video embebido, y la lista de preguntas del guion.
-    - **IA y evidencias** (2 min): tabla de baseline vs. IA (de `nlp.json`) y métricas (de `metrics_*.md`).
-    - **Valor medido** (1 min): Precision@5 y la prueba de tiempo (H-10) o la hipótesis declarada.
-    - **Límites y próximos pasos** (1 min).
-    - Embeds: repo de GitHub (`/embed` + URL) y video de respaldo.
-
-### Dar acceso al jurado
-11. **Compartir** → invitar los correos del jurado como invitados con permiso **Puede ver** (o **Puede
-    comentar**). No publiques la página en la web (no hace falta).
-12. Prueba el acceso en una ventana de incógnito con otra cuenta tuya.
-
-✅ **Quedó bien si:** una cuenta externa ve todas las páginas y bases, y la bitácora en Notion tiene filas con
-fecha y hora de durante el evento.
-
----
-
-## H-12 · Ensayos, video de respaldo y publicaciones (A y C)
-
-### Ensayo con wifi apagado (dos veces)
-1. Clona el repo en otra carpeta: `git clone ~/hackathon/tvn ~/faro-ensayo && cd ~/faro-ensayo`.
-2. Copia tu `.env` a esa carpeta (no está en git).
-3. `make setup` (con wifi), luego **apaga el wifi** y ejecuta `make demo-offline`.
-4. Recorre las 7 preguntas del guion y las 4 del jurado:
-   - "¿De dónde viene esta cifra y de qué año es?"
-   - "Si cinco medios replican la misma agencia, ¿cuántas fuentes independientes cuentas?"
-   - "¿Qué pasa si no hay evidencia o una fuente intenta cambiar tus instrucciones?"
-   - "Muéstrame en Notion una decisión, una prueba fallida y su corrección."
-5. Cronometra el pitch completo: debe quedar en 10 minutos.
-
-### Video de respaldo (2–3 min)
-6. QuickTime → Archivo → **Nueva grabación de pantalla**. Graba el recorrido de la demo con la voz explicando.
-7. Súbelo (YouTube no listado o Drive) e incrústalo en la página del pitch en Notion. Es respaldo, no reemplaza
-   la demo en vivo.
-
-### Publicaciones diarias (10 min por día)
-8. Una publicación en LinkedIn por día con un avance (captura o clip corto), los hashtags
-   `#hackIAthon #hackIAthonPanamá #IAenPanamá #AgenteTVNMedia` y **al menos 3 marcas etiquetadas**
-   (por ejemplo TVN Media, Notion y Viamatica).
+Se retoman cuando lo decidan.
 
 ---
 
@@ -437,7 +419,7 @@ fecha y hora de durante el evento.
 Cada tarea humana terminada lleva una fila en `docs/bitacora.md`, con la hora real del momento:
 
 ```
-| 2026-10-07 22:10 | H-5 | Etiquetado: A 75 temas + 25 pares, C 75 temas + 25 pares; 9 excluidas; 55 min | OK | Desempate Canal/lluvias: tema principal del titular |
+| 2026-10-08 22:10 | H-5 | Etiquetado: ciego 30 (kappa 0,72), asistido A 60 + C 60 (14 sugerencias corregidas), pares 25 + 25; 9 excluidas; 45 min | OK | Desempate Canal/lluvias: tema principal del titular |
 ```
 
 La columna "Qué falló / se decidió" es la que el jurado busca para la pregunta "muéstrame una prueba fallida y

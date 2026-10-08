@@ -54,10 +54,17 @@ VENTANA_FIN = datetime(2026, 10, 1, 0, 0, 0, tzinfo=UTC)
 
 # --- Scraping -------------------------------------------------------------
 HTTP_TIMEOUT = 20.0
-USER_AGENT = (
-    "FARO/0.1 (copiloto de inteligencia informativa; contacto: equipo-faro@example.com; "
-    "respeta robots.txt y pausa por dominio)"
-)
+# Contacto opcional (cambio 2026-10-07): se lee de .env; sin él, el User-Agent va sin contacto.
+FARO_CONTACTO = _env("FARO_CONTACTO").strip()
+if FARO_CONTACTO:
+    USER_AGENT = (
+        f"FARO/0.1 (copiloto de inteligencia informativa; contacto: {FARO_CONTACTO}; "
+        "respeta robots.txt y pausa por dominio)"
+    )
+else:
+    USER_AGENT = (
+        "FARO/0.1 (copiloto de inteligencia informativa; respeta robots.txt y pausa por dominio)"
+    )
 
 # --- NLP / modelos (WP-2) ---------------------------------------------------
 # Cache de modelos en data/cache/hf para que la demo funcione sin red (T10).

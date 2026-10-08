@@ -44,3 +44,16 @@ Registro de fecha/hora, qué se hizo, qué falló y qué se decidió. Se copia a
 | 10:41 | WP-7 | `notion_sync.sync_notion()` idempotente (8 páginas) + `make notion-sync`; `make test` genera `junit.xml` | Notion listo; token/integración [HUMANO] | — |
 | 10:41 | WP-8 | `data/DICCIONARIO.md`; versionar `data/raw/*.jsonl` + `manual/` + `http/index.jsonl` (los `.gz` como asset); `demo-offline` por `git clone`; `demo-cache`; `test_t10` bloquea red; `docker-entrypoint` exige snapshot real | Entrega verificable lista; la recolección real y el ensayo sin wifi son [HUMANO] | — |
 | 10:41 | WP-9 | README/decisiones/.env.example honestos (D-17, D-18 reescritas; D-20..D-22 nuevas) | Documentación alineada con lo que hace el sistema | — |
+
+## 2026-10-07 (noche) — Plan de agente (docs/PLAN_AGENTE.md), hitos M
+
+| Hora (commit) | Hito | Qué se hizo | Resultado | Qué falló / se decidió |
+| --- | --- | --- | --- | --- |
+| 21:41 | M1 | Contacto opcional, GDELT con pausa/reintentos, normalización de medios (via), sitemaps acotados, data-smoke; ACP fuera de alcance | 9 tests de scraping en verde | — |
+| 21:41 | M2.1 | `git rm` del snapshot sintético y derivados | data/raw sin sintéticos | — |
+| 21:43 | M2.2 | Barrera anti-sintéticos en build+docker; validación de series manuales; `manual/LEEME.md`; commit de inec.csv y sbp.csv | 5 series reales (20 inec + 33 sbp) validadas | — |
+| 21:43 | M2.4 | Script `muestra-urls` (20 URLs, semilla 42) | listo | — |
+| 21:48 | Cambios 5–8 | Clasificador por `clf.classes_`; método etiquetado declarado (metodo.json) + kappa; reclasificar tras entrenar; set reservado fuera del repo (BENCH) | 4 tests nuevos | — |
+| 21:56 | M3 | `lenses/_llm.py`; paquete/boletín/fichas con LLM + verificador + límites; vista Paquete muestra proveedor | 5 tests con LLM simulado | Ollama local activo hizo fallar el test de "sin proveedor"; se simuló sin Ollama |
+| 21:58 | M4 | `app/acciones.py`; contexto real; botón "Probar conexión"; plan fijo si herramientas=False | acciones aplicadas y visibles | — |
+| 22:15 | M5.1 + M7.1 | Métricas contradicción/inyección/Precision@5/costo; cobertura 0/0; sample-claims y editor-candidatos; torch CPU + es-core-news-md fijado | uv lock regenerado (169 paquetes) | — |

@@ -87,4 +87,5 @@ def extract_article(
         "es_agencia": es_agencia,
         "agencia": agencia,
         "sintetico": False,
+        "via": "html",
     }

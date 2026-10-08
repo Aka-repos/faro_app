@@ -113,7 +113,11 @@ def generate(
     ids = ids_evidencia or []
     tool_names = [t.get("function", {}).get("name", "") for t in (tools or [])]
 
-    key = cache.cache_key(prompt_version, lente, ids, modelo or "extractivo", mensajes, tool_names)
+    # Incluye el modo en la clave: una corrida 'auto' (cayó a Ollama) no debe reutilizar
+    # el caché de una corrida 'usuario' (cayó a extractivo) con el mismo mensaje.
+    key = cache.cache_key(
+        prompt_version, lente, ids, f"{modo}:{modelo or 'extractivo'}", mensajes, tool_names
+    )
     hit = cache.get(key)
     if hit:
         hit["desde_cache"] = True

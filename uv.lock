@@ -561,10 +561,19 @@ wheels = [
 ]
 
 [[package]]
+name = "es-core-news-md"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl", hash = "sha256:478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2" },
+]
+
+[[package]]
 name = "faro"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "es-core-news-md" },
     { name = "feedparser" },
     { name = "httpx" },
     { name = "litellm" },
@@ -600,6 +609,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "es-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "feedparser" },
     { name = "httpx" },
     { name = "litellm" },

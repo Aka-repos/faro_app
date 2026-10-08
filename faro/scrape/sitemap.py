@@ -68,9 +68,12 @@ def parse_sitemap(url: str, client=None) -> list[dict]:
         loc = _LOC.search(block)
         if not loc:
             continue
-        fecha = _PUB_DATE.search(block)
-        fecha = fecha.group(1).strip() if fecha else (_LAST_MOD.search(block))
-        fecha = fecha.group(1).strip() if fecha else None
+        m = _PUB_DATE.search(block)
+        if m:
+            fecha = m.group(1).strip()
+        else:
+            lm = _LAST_MOD.search(block)
+            fecha = lm.group(1).strip() if lm else None
         titulo = _NEWS_TITLE.search(block)
         fecha_iso = _iso(fecha)
         if not _en_ventana(fecha_iso):

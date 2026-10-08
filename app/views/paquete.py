@@ -1,4 +1,4 @@
-"""Paquete editorial / boletín (E-03, B-04)."""
+"""Paquete editorial / boletín (E-03, B-04), generado con LLM si hay proveedor (M3)."""
 
 from __future__ import annotations
 
@@ -6,9 +6,8 @@ import streamlit as st
 
 from app.db_ui import cargar_evento, df_eventos, sin_datos
 from faro import db
-from faro.evidence import resolver
 from faro.lenses import banca as lente_banca
-from faro.llm import extractive
+from faro.lenses import editorial as lente_editorial
 
 
 def render(lente: str) -> None:
@@ -28,24 +27,16 @@ def render(lente: str) -> None:
     ev = cargar_evento(evento_id)
     if not ev:
         return
-    # Construir afirmaciones verificadas desde el contexto oficial.
     conn = db.connect()
-    afirmaciones = []
-    for c in ev["contexto"]:
-        texto = resolver(conn, c["evidencia_id"])
-        if texto:
-            afirmaciones.append(
-                {
-                    "texto": texto,
-                    "tipo": "hecho",
-                    "evidencia_id": c["evidencia_id"],
-                    "campo": "valor",
-                }
-            )
-    conn.close()
-
+    llm_cfg = st.session_state.get("llm", {})
     if lente == "editorial":
-        out = extractive.generar_editorial(ev, afirmaciones, ev["contexto"])
+        out = lente_editorial.generar_paquete(ev, conn, llm_cfg=llm_cfg)
+        meta = out.pop("_meta", {})
+        st.caption(
+            f"Generado por **{meta.get('proveedor', 'extractivo')}/{meta.get('modelo', 'extractivo')}**"
+            f" · {meta.get('tokens_out', 0)} tokens · ${meta.get('costo_usd', 0):.5f}"
+            + (" · ⚠️ recortado" if out.get("recortado") else "")
+        )
         st.markdown(f"**Título:** {out['titulo']}")
         st.markdown(f"**Enfoque:** {out['enfoque']}")
         st.markdown("#### Brief (≤250 palabras)")
@@ -58,8 +49,12 @@ def render(lente: str) -> None:
         for q in out["preguntas"]:
             st.markdown(f"- {q}")
     else:
-        sectores = lente_banca.mapear_sectores(ev, ev["noticias"])
-        out = extractive.generar_boletin(ev, afirmaciones, [s["nombre"] for s in sectores])
+        out = lente_banca.generar_boletin_sectorial(ev, conn, llm_cfg=llm_cfg)
+        meta = out.pop("_meta", {})
+        st.caption(
+            f"Generado por **{meta.get('proveedor', 'extractivo')}/{meta.get('modelo', 'extractivo')}**"
+            f" · {meta.get('tokens_out', 0)} tokens"
+        )
         st.markdown("#### Resumen (≤250 palabras)")
         st.write(out["resumen"])
         st.markdown("#### Sectores")
@@ -72,6 +67,7 @@ def render(lente: str) -> None:
         st.markdown("#### Hipótesis (marcadas)")
         for h in out["hipotesis"]:
             st.markdown(f"- {h}")
+    conn.close()
     st.markdown("#### Citas")
     for c in ev["contexto"]:
         st.markdown(f"- `{c['evidencia_id']}`")

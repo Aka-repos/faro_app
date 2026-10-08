@@ -19,14 +19,27 @@ Generado desde `config/fuentes.yaml`. Cada fuente tiene método, licencia/condic
 
 | Fuente | Familia | Método | Licencia / condiciones |
 | --- | --- | --- | --- |
-| INEC | oficial_mensual | html | Datos públicos con atribución; conservar unidad y período |
-| ACP | oficial_mensual | html | Estadísticas públicas con atribución |
-| SBP | oficial_mensual | pdf | Información informativa y revisable; no es opinión oficial de la SBP |
+| INEC | oficial_mensual | manual (transcrito) | Datos públicos con atribución; conservar unidad y período |
+| ACP | — (fuera de alcance) | — | No se recolecta en esta versión |
+| SBP | oficial_mensual | manual (transcrito) | Información informativa y revisable; no es opinión oficial de la SBP |
 | Gaceta Oficial | oficial | html | Documentos públicos |
 | SINAPROC | oficial | html | Avisos públicos |
 | ASEP | oficial | html | Avisos públicos |
 | Banco Mundial | historico | api | CC BY 4.0 (salvo excepciones en metadatos) |
 | USGS | eventos | api | Datos públicos; solo hechos sísmicos, nunca evidencia de daños |
+
+### Series oficiales transcritas a mano (data/raw/manual/)
+
+| Serie | Fuente | Rango | Archivo |
+| --- | --- | --- | --- |
+| `inec_imae` | INEC | 2025-10 a 2026-07 | `inec.csv` |
+| `inec_imae_var` | INEC | 2025-10 a 2026-07 | `inec.csv` |
+| `sbp_cbi_activo_total` | SBP | 2025-10 a 2026-08 | `sbp.csv` |
+| `sbp_cbi_depositos` | SBP | 2025-10 a 2026-08 | `sbp.csv` |
+| `sbp_cbi_cartera_neta` | SBP | 2025-10 a 2026-08 | `sbp.csv` |
+
+Cada fila trae la `url` exacta del archivo oficial y, si es PDF, la página. Los PDF de origen están en
+`data/cache/sbp/` (ignorado por git). Ver `data/raw/manual/LEEME.md`.
 
 ## Reglas de integridad
 

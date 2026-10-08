@@ -4,7 +4,7 @@ SHELL := /bin/bash
 PY := uv run python
 UV := uv
 
-.PHONY: setup data data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync clean
+.PHONY: setup data data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync muestra-urls sample-claims editor-candidatos clean
 
 ## Instala dependencias (uv sync), precarga e5-small y el modelo de spaCy (offline).
 setup:
@@ -14,9 +14,13 @@ setup:
 	$(PY) -c "from faro.nlp.embed import Embedder; Embedder(require_model=True).encode(['ok']); print('e5-small OK')"
 	@echo "setup OK"
 
-## Recolecta el snapshot REAL (RSS, sitemaps, GDELT, Banco Mundial, USGS, INEC/ACP/SBP).
+## Recolecta el snapshot REAL (RSS, sitemaps, GDELT, Banco Mundial, USGS, INEC/SBP).
 data:
 	$(PY) -m faro.cli data
+
+## Prueba rápida de recolección (TVN, un mes, en carpeta temporal).
+data-smoke:
+	$(PY) -m faro.cli data --prueba --fuentes tvn --meses 2025-10
 
 ## Escribe el seed sintético SOLO en una carpeta temporal (para pruebas, nunca en data/).
 data-seed:
@@ -49,6 +53,18 @@ eval:
 ## Sincroniza las 8 páginas obligatorias con Notion (o exporta índice para carga manual).
 notion-sync:
 	$(PY) -m faro.cli notion-sync
+
+## Exporta 20 URLs al azar para revisión humana -> data/reports/muestra_urls.csv.
+muestra-urls:
+	$(PY) -m faro.cli muestra-urls
+
+## Exporta 30 afirmaciones al azar para revisión -> data/labels/revision_pendiente.csv.
+sample-claims:
+	$(PY) -m faro.cli sample-claims
+
+## Exporta 20 eventos en orden aleatorio (sin puntaje) -> data/labels/editor_candidatos.csv.
+editor-candidatos:
+	$(PY) -m faro.cli editor-candidatos
 
 ## Evalúa solo el núcleo NLP (clasificación + agrupación) -> reports/nlp.json.
 eval-nlp:

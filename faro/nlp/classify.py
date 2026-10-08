@@ -1,4 +1,9 @@
-"""Clasificación temática (F-04, D-08): baseline de palabras clave vs. embeddings+LR."""
+"""Clasificación temática (F-04, D-08): baseline de palabras clave vs. embeddings+LR.
+
+Cambio 5 (2026-10-07): el clasificador se entrena con etiquetas **string**, así
+`clf.classes_` es la única fuente de verdad de los nombres de tema. Se elimina el
+mapeo por índice (`clase_idx.get(e, 0)`) que producía el desajuste de nombres.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +15,22 @@ from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from faro.loaders import load_keywords
 
 TEMAS = list(load_keywords()["temas"].keys())
+
+
+def etiquetas_permitidas() -> list[str]:
+    """Los 6 temas más 'excluir'."""
+    return TEMAS + ["excluir"]
+
+
+def validar_etiquetas(etiquetas: list[str], filas: list[dict] | None = None) -> list[str]:
+    """Devuelve los valores no permitidos (error que lista fila y valor)."""
+    permitidas = set(etiquetas_permitidas())
+    invalidas = []
+    for i, e in enumerate(etiquetas):
+        if e not in permitidas:
+            fila = (filas[i].get("noticia_id") or filas[i].get("titulo")) if filas else i
+            invalidas.append(f"fila={fila} valor={e!r}")
+    return invalidas
 
 
 def clasificar_baseline(titulo: str) -> str:
@@ -25,37 +46,25 @@ def clasificar_baseline(titulo: str) -> str:
     return mejor if mejor_puntos > 0 else "economia"
 
 
-def _scores_a_clase(pred: np.ndarray) -> list[str]:
-    return [TEMAS[i] for i in pred]
-
-
-def entrenar_clasificador(embeddings: np.ndarray, etiquetas: list[str]):
-    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-    return clf
-
-
-def evaluar_clasificador(embeddings: np.ndarray, etiquetas: list[str]) -> dict:
-    """Validación cruzada 5-fold de embeddings+LR vs. baseline por palabras clave."""
-    clase_idx = {c: i for i, c in enumerate(TEMAS)}
-    y = np.array([clase_idx.get(e, 0) for e in etiquetas])
-    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    preds = cross_val_predict(clf, embeddings, y, cv=skf)
-    macro_lr = f1_score(y, preds, average="macro")
-
-    # Baseline necesita los textos; aquí recibe solo embeddings, así que se estima
-    # el baseline en la función wrapper `evaluar_nlp` que sí tiene los titulares.
-    return {"macro_f1_lr": float(macro_lr), "preds": preds.tolist()}
-
-
 def entrenar_final(embeddings: np.ndarray, etiquetas: list[str]) -> LogisticRegression:
-    clase_idx = {c: i for i, c in enumerate(TEMAS)}
-    y = np.array([clase_idx.get(e, 0) for e in etiquetas])
+    """Entrena con etiquetas string; `clf.classes_` conserva el orden real de clases."""
     clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-    clf.fit(embeddings, y)
+    clf.fit(embeddings, etiquetas)
     return clf
 
 
 def predecir(clf, embeddings: np.ndarray) -> list[str]:
+    """Predice y devuelve los nombres reales de clase (usando `clf.classes_`)."""
     pred = clf.predict(embeddings)
-    return _scores_a_clase(pred)
+    if np.issubdtype(np.asarray(pred).dtype, np.integer):
+        return [clf.classes_[i] for i in pred]
+    return list(pred)
+
+
+def evaluar_clasificador(embeddings: np.ndarray, etiquetas: list[str]) -> dict:
+    """Validación cruzada 5-fold (etiquetas string). Devuelve macro-F1."""
+    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    preds = cross_val_predict(clf, embeddings, etiquetas, cv=skf)
+    macro_lr = f1_score(etiquetas, preds, average="macro")
+    return {"macro_f1_lr": float(macro_lr), "preds": list(preds)}

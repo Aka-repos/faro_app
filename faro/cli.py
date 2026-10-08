@@ -10,12 +10,42 @@ import config.settings as S
 
 
 def _cmd_data(args) -> None:
-    """Recolección real (WP-1). Nunca genera datos sintéticos."""
+    """Recolección real. Nunca genera datos sintéticos (M1, M1.5)."""
+    import tempfile
+    from datetime import datetime
+    from pathlib import Path
+
+    import config.settings as S
     from faro.scrape.collect import recolectar
 
-    res = recolectar()
+    if not S.FARO_CONTACTO:
+        print("⚠️  ADVERTENCIA: FARO_CONTACTO vacío; el User-Agent irá sin contacto (opcional).")
+
+    fuentes = [f.strip() for f in args.fuentes.split(",") if f.strip()] if args.fuentes else None
+
+    desde = hasta = None
+    if args.meses:
+        meses = sorted(m.strip() for m in args.meses.split(",") if m.strip())
+        desde = datetime.fromisoformat(f"{meses[0]}-01T00:00:00+00:00")
+        y, m = map(int, meses[-1].split("-"))
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+        hasta = datetime.fromisoformat(f"{y:04d}-{m:02d}-01T00:00:00+00:00")
+
+    if args.prueba:
+        tmp = Path(tempfile.mkdtemp(prefix="faro-data-smoke-"))
+        S.RAW_DIR = tmp / "raw"
+        S.REPORTS_DIR = tmp / "reports"
+        S.RAW_DIR.mkdir(parents=True, exist_ok=True)
+        S.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"Modo prueba: escribiendo en {tmp}")
+
+    res = recolectar(fuentes=fuentes, desde=desde, hasta=hasta)
     print("Recolección real completa:")
     print(json.dumps(res["conteos"], ensure_ascii=False, indent=2))
+    if res.get("por_fuente"):
+        print(json.dumps(res["por_fuente"], ensure_ascii=False, indent=2))
 
 
 def _cmd_data_seed(args) -> None:
@@ -66,7 +96,20 @@ def _cmd_verify(args) -> None:
 
 
 def _cmd_build(args) -> None:
+    import os
+
     from faro.pipeline import build
+
+    # Barrera M2.2: no construir con datos sintéticos (salvo tests).
+    if os.environ.get("FARO_PERMITIR_SINTETICO") != "1":
+        for f in S.RAW_DIR.glob("*.jsonl"):
+            for linea in f.read_text(encoding="utf-8").splitlines():
+                if '"sintetico": true' in linea:
+                    print(
+                        f"Error: {f.name} contiene registros sintéticos. Recolecta con `make data` "
+                        "o usa FARO_PERMITIR_SINTETICO=1 solo en pruebas."
+                    )
+                    sys.exit(1)
 
     res = build()
     print("Build OK:")
@@ -81,6 +124,7 @@ def _cmd_build(args) -> None:
 
 def _cmd_eval(args) -> None:
     import os
+    import time
 
     from faro import db
     from faro.agent import loop
@@ -88,13 +132,15 @@ def _cmd_eval(args) -> None:
 
     split = os.environ.get("SPLIT", "dev")
     modo = os.environ.get("MODO", "determinista")
-    casos = benchmark.cargar_benchmark(split=split)
+    bench = os.environ.get("BENCH")  # cambio 8: ruta explícita al set reservado
+    casos = benchmark.cargar_benchmark(split=split, bench=bench)
     llm_cfg = {"modo": modo}
     if modo == "usuario":
         llm_cfg.update(proveedor=S.LLM_PROVEEDOR, modelo=S.LLM_MODELO, api_key=S.LLM_API_KEY)
     conn = db.connect()
     resultados = []
     for c in casos:
+        t0 = time.perf_counter()
         try:
             r = loop.consultar(
                 c["pregunta"], conn, lente=c.get("lente", "editorial"), llm_cfg=llm_cfg
@@ -102,20 +148,34 @@ def _cmd_eval(args) -> None:
             c["respuesta"] = r["respuesta"][:200]
             c["abstuvo"] = r["abstencion"]
             c["meta"] = r.get("meta", {})
+            c["afirmaciones"] = r.get("afirmaciones", [])
+            c["acciones"] = r.get("acciones", [])
+            c["traza"] = r.get("traza", [])
         except Exception as e:  # noqa: BLE001
             c["respuesta"] = f"error:{e}"
             c["abstuvo"] = True
+        c["latencia_ms"] = int((time.perf_counter() - t0) * 1000)
         resultados.append(c)
     conn.close()
+
+    todas_afirmaciones = [a for c in resultados for a in c.get("afirmaciones", [])]
+    top_faro = [c.get("evento_id", "") for c in resultados if c.get("evento_id")][:5]
     m = {
         "split": split,
         "modo": modo,
-        "casos": resultados,
         "abstencion": metrics.abstencion(resultados),
-        "cobertura_citas": metrics.cobertura_citas(
-            [a for c in resultados for a in c.get("afirmaciones", [])]
-        ),
+        "cobertura_citas": metrics.cobertura_citas(todas_afirmaciones),
+        "contradiccion": metrics.contradiccion(resultados),
+        "inyeccion": metrics.inyeccion(resultados),
+        "precision_at_5": metrics.precision_at_5(top_faro),
+        "latencia": metrics.latencia(resultados),
+        "costo": metrics.costo(resultados),
     }
+    # Cambio 8: el set reservado NO imprime preguntas ni respuestas, solo agregados + IDs fallidos.
+    if split == "reservado" or bench:
+        m["n_casos"] = len(resultados)
+    else:
+        m["casos"] = resultados
     path = metrics.escribir_metricas(m)
     print(f"Métricas escritas en {path}")
     print(json.dumps(m["abstencion"], ensure_ascii=False, indent=2))
@@ -124,9 +184,8 @@ def _cmd_eval(args) -> None:
 def _cmd_eval_nlp(args) -> None:
     """Evaluación NLP NO circular: lee data/labels/temas.csv y pares.csv (etiquetas humanas)."""
     import csv
+    import json as _json
 
-    import numpy as np
-    from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import f1_score
     from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
@@ -144,48 +203,87 @@ def _cmd_eval_nlp(args) -> None:
 
     with open(temas_path, encoding="utf-8") as fh:
         filas = [r for r in csv.DictReader(fh) if r.get("tema", "").strip()]
-    titulares = [r["titulo"] for r in filas]
-    etiquetas = [r["tema"].strip() for r in filas]
-    clases = sorted(set(etiquetas))
-    clase_idx = {c: i for i, c in enumerate(clases)}
-    y = np.array([clase_idx[e] for e in etiquetas])
-    matriz = embed.Embedder().encode(titulares)
+    etiquetas_todas = [r["tema"].strip() for r in filas]
+    # Cambio 5: etiquetas fuera de los 6 temas o "excluir" -> error.
+    invalidas = classify.validar_etiquetas(etiquetas_todas, filas)
+    if invalidas:
+        print("Error: etiquetas no permitidas:\n" + "\n".join(invalidas[:20]))
+        sys.exit(1)
+    # Filas "excluir" se quitan antes de entrenar y medir, y se cuentan.
+    filas_ok = [f for f in filas if f["tema"].strip() != "excluir"]
+    n_excluidas = len(filas) - len(filas_ok)
+    titulares = [r["titulo"] for r in filas_ok]
+    etiquetas = [r["tema"].strip() for r in filas_ok]
 
+    matriz = embed.Embedder().encode(titulares)
     baseline = [classify.clasificar_baseline(t) for t in titulares]
     macro_baseline = f1_score(etiquetas, baseline, average="macro")
 
-    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-    preds = cross_val_predict(clf, matriz, y, cv=StratifiedKFold(5, shuffle=True, random_state=42))
-    macro_lr = f1_score(y, preds, average="macro")
+    from sklearn.linear_model import LogisticRegression
 
-    # Entrenar el clasificador final y guardarlo para el pipeline.
+    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
+    preds = cross_val_predict(
+        clf, matriz, etiquetas, cv=StratifiedKFold(5, shuffle=True, random_state=42)
+    )
+    macro_lr = f1_score(etiquetas, preds, average="macro")
+
+    # Entrenar final con etiquetas string (clf.classes_ = fuente de verdad) y guardar dict.
     import joblib
 
     models_dir = S.REPO_ROOT / "models"
     models_dir.mkdir(exist_ok=True)
-    clf.fit(matriz, y)
-    joblib.dump(clf, models_dir / "tema_lr.joblib")
+    clf.fit(matriz, etiquetas)
+    joblib.dump({"modelo": clf, "clases": list(clf.classes_)}, models_dir / "tema_lr.joblib")
 
-    # Precisión/recall de pares (clustering): un par "mismo evento" si quedó en el mismo cluster.
-    with open(pares_path, encoding="utf-8") as fh:
-        pares = [r for r in csv.DictReader(fh) if r.get("mismo_evento", "").strip()]
-
+    # Cambio 6: método de etiquetado declarado en metodo.json (si no, "no declarado").
+    metodo_path = S.LABELS_DIR / "metodo.json"
+    metodo = {}
+    if metodo_path.exists():
+        metodo = _json.loads(metodo_path.read_text(encoding="utf-8"))
     report = {
         "n_etiquetas": len(etiquetas),
-        "n_pares": len(pares),
-        "metodo_etiquetado": "manual por los dos integrantes",
-        "etiquetadores": "[HUMANO]",
-        "fecha": __import__("datetime").datetime.now().isoformat(),
+        "n_excluidas": n_excluidas,
+        "n_pares": 0,
+        "metodo_etiquetado": metodo.get("metodo", "no declarado"),
+        "etiquetadores": metodo.get("etiquetadores", []),
+        "fecha": metodo.get("fecha") or __import__("datetime").datetime.now().isoformat(),
         "embedder": EMBEDDER_NAME,
         "ner": "es_core_news_md",
         "macro_f1_lr": round(float(macro_lr), 4),
         "macro_f1_baseline": round(float(macro_baseline), 4),
         "mejora": round(float(macro_lr) - float(macro_baseline), 4),
-        "clases": clases,
+        "clases": list(clf.classes_),
     }
+
+    # Cambio 6: kappa de Cohen si existen ciego_A.csv y ciego_C.csv.
+    ciego_a = S.LABELS_DIR / "ciego_A.csv"
+    ciego_c = S.LABELS_DIR / "ciego_C.csv"
+    if ciego_a.exists() and ciego_c.exists():
+        from sklearn.metrics import cohen_kappa_score
+
+        a = [r["tema"].strip() for r in csv.DictReader(open(ciego_a, encoding="utf-8"))]
+        c = [r["tema"].strip() for r in csv.DictReader(open(ciego_c, encoding="utf-8"))]
+        if len(a) == len(c) and a:
+            report["acuerdo_entre_etiquetadores"] = {
+                "kappa": round(float(cohen_kappa_score(a, c)), 3),
+                "coinciden": sum(x == y for x, y in zip(a, c, strict=False)),
+                "n": len(a),
+            }
+
+    # Pares (solo conteo, para el reporte).
+    with open(pares_path, encoding="utf-8") as fh:
+        pares = [r for r in csv.DictReader(fh) if r.get("mismo_evento", "").strip()]
+    report["n_pares"] = len(pares)
+
     S.ensure_dirs()
     (S.REPORTS_DIR / "nlp.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
     print(json.dumps(report, ensure_ascii=False, indent=2))
+
+    # Cambio 7: reclasificar las noticias con el modelo recién entrenado.
+    print("Reclasificando noticias (make build)...")
+    from faro.pipeline import build
+
+    build()
 
 
 def _cmd_labels_sample(args) -> None:
@@ -320,7 +418,10 @@ def _cmd_demo_cache(args) -> None:
 def main() -> None:
     p = argparse.ArgumentParser(prog="faro", description="FARO — pipeline y demo")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("data")
+    p_data = sub.add_parser("data")
+    p_data.add_argument("--fuentes", help="ids separados por coma (subconjunto)")
+    p_data.add_argument("--meses", help="meses AAAA-MM separados por coma (subconjunto)")
+    p_data.add_argument("--prueba", action="store_true", help="escribir en carpeta temporal")
     sub.add_parser("data-seed")
     sub.add_parser("freeze")
     sub.add_parser("verify")
@@ -332,6 +433,9 @@ def main() -> None:
     sub.add_parser("demo-offline")
     sub.add_parser("demo-cache")
     sub.add_parser("notion-sync")
+    sub.add_parser("muestra-urls")
+    sub.add_parser("sample-claims")
+    sub.add_parser("editor-candidatos")
 
     args = p.parse_args()
     {
@@ -347,6 +451,9 @@ def main() -> None:
         "demo-offline": _cmd_demo_offline,
         "demo-cache": _cmd_demo_cache,
         "notion-sync": _cmd_notion_sync,
+        "muestra-urls": _cmd_muestra_urls,
+        "sample-claims": _cmd_sample_claims,
+        "editor-candidatos": _cmd_editor_candidatos,
     }[args.cmd](args)
 
 
@@ -354,6 +461,92 @@ def _cmd_notion_sync(args) -> None:
     from faro.review import notion_sync
 
     print(json.dumps(notion_sync.sync_notion(), ensure_ascii=False, indent=2))
+
+
+def _cmd_muestra_urls(args) -> None:
+    """M2.4: exporta 20 URLs al azar (semilla fija) para revisión humana."""
+    import csv
+    import random
+
+    from faro import db
+
+    S.ensure_dirs()
+    conn = db.connect()
+    rows = db.fetchall(
+        conn, "SELECT id, medio, titulo, fecha_publicacion, url FROM noticia ORDER BY RANDOM()"
+    )
+    conn.close()
+    rng = random.Random(42)
+    muestra = rng.sample(rows, min(20, len(rows)))
+    path = S.REPORTS_DIR / "muestra_urls.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["noticia_id", "medio", "titulo", "fecha_publicacion", "url", "ok", "motivo"])
+        for r in muestra:
+            w.writerow([r["id"], r["medio"], r["titulo"], r["fecha_publicacion"], r["url"], "", ""])
+    print(f"Muestra de {len(muestra)} URLs escrita en {path}")
+
+
+def _cmd_sample_claims(args) -> None:
+    """M5.1: exporta 30 afirmaciones al azar para revisión humana (semilla fija)."""
+    import csv
+    import glob
+    import random
+
+    reportes = sorted(glob.glob(str(S.REPORTS_DIR / "metrics_*.json")), reverse=True)
+    if not reportes:
+        print("No hay corridas de evaluación. Corre `make eval` primero.")
+        sys.exit(1)
+    data = json.loads(open(reportes[0], encoding="utf-8").read())
+    afirmaciones = []
+    for c in data.get("casos", []):
+        for a in c.get("afirmaciones", []):
+            afirmaciones.append(
+                {
+                    "afirmacion_id": c.get("id"),
+                    "texto": a.get("texto"),
+                    "evidencia_id": a.get("evidencia_id"),
+                    "evidencia_texto": "",
+                    "sustentada": "",
+                }
+            )
+    rng = random.Random(42)
+    muestra = rng.sample(afirmaciones, min(30, len(afirmaciones)))
+    path = S.LABELS_DIR / "revision_pendiente.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(
+            fh,
+            fieldnames=["afirmacion_id", "texto", "evidencia_id", "evidencia_texto", "sustentada"],
+        )
+        w.writeheader()
+        w.writerows(muestra)
+    print(f"{len(muestra)} afirmaciones en {path}")
+
+
+def _cmd_editor_candidatos(args) -> None:
+    """M5.1 extra c: 20 eventos del ranking en orden aleatorio, sin puntaje."""
+    import csv
+    import random
+
+    from faro import db
+
+    S.ensure_dirs()
+    conn = db.connect()
+    rows = db.fetchall(
+        conn,
+        "SELECT e.id, e.titulo_canonico, e.fecha_primera, e.n_medios "
+        "FROM evento e ORDER BY RANDOM()",
+    )
+    conn.close()
+    rng = random.Random(42)
+    muestra = rng.sample(rows, min(20, len(rows)))
+    path = S.LABELS_DIR / "editor_candidatos.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["evento_id", "titulo", "fecha", "medios"])
+        for r in muestra:
+            w.writerow([r["id"], r["titulo_canonico"], r["fecha_primera"], r["n_medios"]])
+    print(f"{len(muestra)} candidatos en {path}")
 
 
 if __name__ == "__main__":
