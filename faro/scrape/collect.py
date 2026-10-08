@@ -379,7 +379,7 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
     noticias: list[dict] = []
     for ini, fin in _meses(desde, hasta):
         mes = ini[:6]
-        consultas = [("domain:tvn-2.com", "")] + [("sourcecountry:PM", t) for t in temas_consulta]
+        consultas = [("sourcecountry:PM", t) for t in temas_consulta]
         for base, tema in consultas:
             q = f"{base} {tema}".strip()
             cached = _gdelt_leer_cache(mes, q)

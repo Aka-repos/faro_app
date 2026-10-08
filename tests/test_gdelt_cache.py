@@ -13,7 +13,7 @@ from faro.scrape import collect
 
 def _queries_mes():
     temas = [f"({(' OR '.join(palabras[:3]))})" for palabras in load_keywords()["temas"].values()]
-    return ["domain:tvn-2.com"] + [f"sourcecountry:PM {t}" for t in temas]
+    return [f"sourcecountry:PM {t}" for t in temas]
 
 
 def test_cache_roundtrip(monkeypatch, tmp_path):
@@ -114,3 +114,19 @@ def test_gdelt_429_espera_120s_y_reintenta(monkeypatch, tmp_path):
     assert len(llamadas) == 2 * n  # una inicial + una tras 120 s por consulta
     assert 120 in sleeps
     assert g["errores"] == n
+
+
+def test_gdelt_sin_consulta_domain_tvn(monkeypatch, tmp_path):
+    monkeypatch.setattr(collect, "_GDELT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    consultas: list[str] = []
+
+    def _fake_gdelt(q, ini, fin, maxrec=250, client=None):
+        consultas.append(q)
+        return [], None
+
+    monkeypatch.setattr(collect.apis, "gdelt", _fake_gdelt)
+    collect._recolectar_gdelt(datetime(2025, 10, 1), datetime(2025, 11, 1))
+    assert consultas
+    assert all("domain:tvn-2.com" not in q for q in consultas)
+    assert len(consultas) == len(load_keywords()["temas"])  # solo los 6 temas
