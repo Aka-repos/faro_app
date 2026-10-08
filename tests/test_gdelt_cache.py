@@ -114,6 +114,18 @@ def test_gdelt_429_espera_120s_y_reintenta(monkeypatch, tmp_path):
     assert len(llamadas) == 2 * n  # una inicial + una tras 120 s por consulta
     assert 120 in sleeps
     assert g["errores"] == n
+    assert g["pendientes_429"] == n  # punto 5: pendientes por 429
+
+
+def test_resumen_medios():
+    noticias = [
+        {"medio": "TVN Panamá", "url": "a"},
+        {"medio": "TVN Panamá", "url": "b"},
+        {"medio": "La Prensa Panamá", "url": "c"},
+    ]
+    distintos, por_medio = collect._resumen_medios(noticias)
+    assert distintos == 2
+    assert por_medio == {"TVN Panamá": 2, "La Prensa Panamá": 1}
 
 
 def test_gdelt_sin_consulta_domain_tvn(monkeypatch, tmp_path):

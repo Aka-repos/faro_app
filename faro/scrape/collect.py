@@ -7,6 +7,7 @@ deduplica por URL normalizada y escribe `data/raw/{noticias,series,indicadores,s
 from __future__ import annotations
 
 import json
+from collections import Counter
 from datetime import UTC, datetime
 
 import config.settings as S
@@ -372,7 +373,7 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
     """
     import time as _time
 
-    g = {"intentos": 0, "ok": 0, "errores": 0, "desde_cache": 0, "detalle": []}
+    g = {"intentos": 0, "ok": 0, "errores": 0, "pendientes_429": 0, "desde_cache": 0, "detalle": []}
     keywords = load_keywords()["temas"]
     temas_consulta = [f"({(' OR '.join(palabras[:3]))})" for _tema, palabras in keywords.items()]
     gclient = politeness.PoliteClient(rate_limit_s=10.0)
@@ -402,6 +403,8 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
                 filas, error = apis.gdelt(q, ini, fin, maxrec=250, client=gclient)
             if error:
                 g["errores"] += 1
+                if "429" in error:
+                    g["pendientes_429"] += 1
                 g["detalle"].append({"mes": mes, "query": q, "ok": False, "error": error})
                 print(f"    gdelt {mes} '{q[:40]}': error {error}")
                 continue
@@ -474,6 +477,7 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     _escribir("sismos.jsonl", sismos)
 
     ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    medios_distintos, noticias_por_medio = _resumen_medios(noticias)
     resumen = {
         "fecha": datetime.now(UTC).isoformat(),
         "duracion_s": round(_time.time() - t0, 1),
@@ -483,6 +487,8 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
             "indicadores": len(indicadores),
             "sismos": len(sismos),
         },
+        "medios_distintos": medios_distintos,
+        "noticias_por_medio": noticias_por_medio,
         "por_fuente": reporte,
     }
     (S.REPORTS_DIR / f"recoleccion_{ts}.json").write_text(
@@ -501,6 +507,12 @@ def _dedup_noticias(noticias: list[dict]) -> list[dict]:
         if actual is None or (n.get("fecha_publicacion") and not actual.get("fecha_publicacion")):
             por_url[nu] = n
     return list(por_url.values())
+
+
+def _resumen_medios(noticias: list[dict]) -> tuple[int, dict]:
+    """(medios_distintos, noticias_por_medio ordenado desc)."""
+    por_medio = Counter(n.get("medio", "") for n in noticias)
+    return len(por_medio), dict(sorted(por_medio.items(), key=lambda kv: -kv[1]))
 
 
 def recolectar_gdelt_solo(desde=None, hasta=None) -> dict:
