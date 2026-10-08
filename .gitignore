@@ -27,7 +27,9 @@ data/vectores_idx.json
 # set reservado: NUNCA se versiona (cambio 8)
 data/benchmark_reservado.jsonl
 # snapshot: se versionan los JSONL y el índice http (el jurado verifica los hashes).
+# La evidencia cruda (.gz) va empaquetada como asset de release, no en git.
 data/raw/http/*.gz
+data/snapshot_http.tar.gz
 data/out/*.jsonl
 !data/out/.gitkeep
 *.npy

@@ -1,0 +1,502 @@
+{
+  "fecha": "2026-10-08T13:39:18.940867+00:00",
+  "duracion_s": 767.5,
+  "conteos": {
+    "noticias": 3508,
+    "nuevas_gdelt": 1747
+  },
+  "gdelt": {
+    "intentos": 19,
+    "ok": 1747,
+    "errores": 19,
+    "pendientes_429": 0,
+    "desde_cache": 53,
+    "detalle": [
+      {
+        "mes": "202510",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202510",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202510",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202510",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 2,
+        "desde_cache": true
+      },
+      {
+        "mes": "202510",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202510",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202511",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202511",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 120,
+        "desde_cache": true
+      },
+      {
+        "mes": "202511",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202511",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202511",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202511",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202512",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202512",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 147,
+        "desde_cache": true
+      },
+      {
+        "mes": "202512",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202512",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202512",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202512",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202601",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202601",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 194,
+        "desde_cache": true
+      },
+      {
+        "mes": "202601",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202601",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202601",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202601",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202602",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202602",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 149,
+        "desde_cache": true
+      },
+      {
+        "mes": "202602",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202602",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 2,
+        "desde_cache": true
+      },
+      {
+        "mes": "202602",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202602",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202603",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202603",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 230,
+        "desde_cache": true
+      },
+      {
+        "mes": "202603",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202603",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 2,
+        "desde_cache": true
+      },
+      {
+        "mes": "202603",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202603",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202604",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202604",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 165,
+        "desde_cache": true
+      },
+      {
+        "mes": "202604",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202604",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202604",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202604",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202605",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202605",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 187,
+        "desde_cache": true
+      },
+      {
+        "mes": "202605",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202605",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202605",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202605",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202606",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202606",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202606",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202606",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202606",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202606",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202607",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202607",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 146,
+        "desde_cache": true
+      },
+      {
+        "mes": "202607",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202607",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202607",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202607",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202608",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202608",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 194,
+        "desde_cache": true
+      },
+      {
+        "mes": "202608",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202608",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202608",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202608",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202609",
+        "query": "sourcecountry:PM (economía OR pib OR inflación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202609",
+        "query": "sourcecountry:PM (canal OR tránsito OR tonelaje)",
+        "ok": true,
+        "n": 200,
+        "desde_cache": true
+      },
+      {
+        "mes": "202609",
+        "query": "sourcecountry:PM (turismo OR turista OR visitante)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      },
+      {
+        "mes": "202609",
+        "query": "sourcecountry:PM (electricidad OR agua OR energía)",
+        "ok": true,
+        "n": 1,
+        "desde_cache": true
+      },
+      {
+        "mes": "202609",
+        "query": "sourcecountry:PM (sismo OR terremoto OR lluvia)",
+        "ok": false,
+        "error": "HTTP ? tras 3 intentos"
+      },
+      {
+        "mes": "202609",
+        "query": "sourcecountry:PM (ley OR decreto OR regulación)",
+        "ok": true,
+        "n": 0,
+        "desde_cache": true
+      }
+    ]
+  }
+}

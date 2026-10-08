@@ -51,6 +51,18 @@ make freeze          # congela v1 y escribe manifest.json con SHA-256
 make verify-snapshot # recalcula hashes y los compara
 ```
 
+La evidencia cruda (`data/raw/http/*.gz`) se empaqueta como asset de release, no va a git:
+
+```bash
+# Empaquetar (se sube a GitHub Releases como asset, junto al tag del snapshot)
+tar -czf data/snapshot_http.tar.gz -C data/raw/http $(find data/raw/http -name '*.gz' | sed 's#data/raw/http/##' | sort)
+
+# Restaurar para que `make verify-snapshot` pueda comprobar los hashes
+tar -xzf data/snapshot_http.tar.gz -C data/raw/http
+```
+
+`data/raw/http/index.jsonl` sí va versionado: lleva la URL, el status y el SHA-256 de cada `.gz`.
+
 ## Ejecutar
 
 ```bash

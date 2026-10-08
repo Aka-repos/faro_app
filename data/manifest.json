@@ -1,0 +1,136 @@
+{
+  "version": "v1",
+  "fecha_corte_UTC": "2026-10-08T14:53:34.000886+00:00",
+  "consultas": {
+    "ventana": [
+      "2025-10-02T00:00:00+00:00",
+      "2026-10-01T00:00:00+00:00"
+    ],
+    "paises": [
+      "PAN",
+      "CRI",
+      "COL",
+      "DOM",
+      "MEX",
+      "GTM"
+    ],
+    "indicadores": [
+      "NY.GDP.MKTP.KD.ZG",
+      "FP.CPI.TOTL.ZG",
+      "SL.UEM.TOTL.ZS",
+      "SP.POP.TOTL",
+      "IT.NET.USER.ZS",
+      "NE.EXP.GNFS.ZS"
+    ],
+    "usgs_caja": {
+      "lat": [
+        5,
+        12
+      ],
+      "lon": [
+        -86,
+        -76
+      ],
+      "minmag": 3.0
+    }
+  },
+  "cantidad_por_archivo": {
+    "noticias.jsonl": 3508,
+    "series.jsonl": 53,
+    "sismos.jsonl": 208,
+    "indicadores.jsonl": 540,
+    "http/index.jsonl": 424,
+    "manual/sbp.csv": 34,
+    "manual/inec.csv": 21
+  },
+  "licencia_condiciones": [
+    {
+      "fuente": "tvn",
+      "licencia": "Titulares y enlaces públicos; no republicar artículos, imágenes ni videos sin autorización del patrocinador",
+      "condiciones": "Solo metadatos (título, URL, fecha, resumen publicado). El patrocinio no concede derechos de republicación."
+    },
+    {
+      "fuente": "telemetro",
+      "licencia": "Titulares y enlaces públicos",
+      "condiciones": "Solo metadatos y resumen publicado."
+    },
+    {
+      "fuente": "panama_america",
+      "licencia": "Titulares y enlaces públicos",
+      "condiciones": "Solo metadatos y resumen publicado."
+    },
+    {
+      "fuente": "la_prensa",
+      "licencia": "Titulares y enlaces públicos",
+      "condiciones": "Solo metadatos y resumen publicado."
+    },
+    {
+      "fuente": "la_estrella",
+      "licencia": "Titulares y enlaces públicos",
+      "condiciones": "Solo metadatos y resumen publicado."
+    },
+    {
+      "fuente": "metro_libre",
+      "licencia": "Titulares y enlaces públicos",
+      "condiciones": "Solo metadatos y resumen publicado."
+    },
+    {
+      "fuente": "gdelt",
+      "licencia": "Metadatos de enlaces a medios; no transfiere derechos de los medios enlazados",
+      "condiciones": "Consultar por 'Panama', economía, logística, turismo, eventos naturales; máx 250 por consulta; deduplicar por URL."
+    },
+    {
+      "fuente": "inec",
+      "licencia": "Datos públicos con atribución",
+      "condiciones": "Cuadros publicados; conservar unidad y período; verificar rezago."
+    },
+    {
+      "fuente": "acp",
+      "licencia": "Estadísticas públicas con atribución",
+      "condiciones": "Tránsitos y tonelaje; conservar unidad y período."
+    },
+    {
+      "fuente": "sbp",
+      "licencia": "Información informativa y revisable; no es opinión oficial de la SBP",
+      "condiciones": "Extraer series agregadas con período, unidad y página de origen; datos informativos."
+    },
+    {
+      "fuente": "gaceta",
+      "licencia": "Documentos públicos",
+      "condiciones": "Secciones públicas; regulación."
+    },
+    {
+      "fuente": "sinaproc",
+      "licencia": "Avisos públicos",
+      "condiciones": "Eventos naturales y servicios públicos."
+    },
+    {
+      "fuente": "asep",
+      "licencia": "Avisos públicos",
+      "condiciones": "Servicios públicos."
+    },
+    {
+      "fuente": "banco_mundial",
+      "licencia": "CC BY 4.0 (salvo excepciones en metadatos)",
+      "condiciones": "6 países, 6 indicadores, 2010–2024; conservar valores faltantes; atribución."
+    },
+    {
+      "fuente": "usgs",
+      "licencia": "Datos públicos (revisar elementos de terceros)",
+      "condiciones": "Solo hechos sísmicos; nunca evidencia de daños o pérdidas."
+    }
+  ],
+  "transformaciones": [
+    "normalización de fechas a ISO 8601 UTC",
+    "deduplicación por URL normalizada",
+    "nulos conservados (nunca rellenados con cero)",
+    "registros inválidos a cuarentena con motivo",
+    "sintético: el seed es un corpus de demostración, no datos reales"
+  ],
+  "sha256": {
+    "indicadores.jsonl": "cb3d5bc701acd93f1bd3ee32231a77f8a1ebf1bbb240ebda3d38295457656edc",
+    "noticias.jsonl": "1259632d455de725de5bfb7d024c8cabe77066d93ce35ca4349b17e3073412e6",
+    "series.jsonl": "2faeb8a1586becd0cfaef8956f2e204e68460bdefdc55d240a833de12bf0d7e3",
+    "sismos.jsonl": "716a8ee6ff2abbd8004d86fbe1dee4a379288d8e1f6f7756b2a8eb4ff1df672e"
+  }
+}
