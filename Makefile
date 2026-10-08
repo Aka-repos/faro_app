@@ -4,7 +4,7 @@ SHELL := /bin/bash
 PY := uv run python
 UV := uv
 
-.PHONY: setup data data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync muestra-urls clean
+.PHONY: setup data data-smoke data-seed freeze verify-snapshot build run test eval eval-nlp labels-sample check check-sources demo-offline demo-cache notion-sync muestra-urls sample-claims editor-candidatos clean
 
 ## Instala dependencias (uv sync), precarga e5-small y el modelo de spaCy (offline).
 setup:
@@ -57,6 +57,14 @@ notion-sync:
 ## Exporta 20 URLs al azar para revisión humana -> data/reports/muestra_urls.csv.
 muestra-urls:
 	$(PY) -m faro.cli muestra-urls
+
+## Exporta 30 afirmaciones al azar para revisión -> data/labels/revision_pendiente.csv.
+sample-claims:
+	$(PY) -m faro.cli sample-claims
+
+## Exporta 20 eventos en orden aleatorio (sin puntaje) -> data/labels/editor_candidatos.csv.
+editor-candidatos:
+	$(PY) -m faro.cli editor-candidatos
 
 ## Evalúa solo el núcleo NLP (clasificación + agrupación) -> reports/nlp.json.
 eval-nlp:

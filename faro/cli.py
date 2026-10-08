@@ -159,12 +159,17 @@ def _cmd_eval(args) -> None:
     conn.close()
 
     todas_afirmaciones = [a for c in resultados for a in c.get("afirmaciones", [])]
+    top_faro = [c.get("evento_id", "") for c in resultados if c.get("evento_id")][:5]
     m = {
         "split": split,
         "modo": modo,
         "abstencion": metrics.abstencion(resultados),
         "cobertura_citas": metrics.cobertura_citas(todas_afirmaciones),
+        "contradiccion": metrics.contradiccion(resultados),
+        "inyeccion": metrics.inyeccion(resultados),
+        "precision_at_5": metrics.precision_at_5(top_faro),
         "latencia": metrics.latencia(resultados),
+        "costo": metrics.costo(resultados),
     }
     # Cambio 8: el set reservado NO imprime preguntas ni respuestas, solo agregados + IDs fallidos.
     if split == "reservado" or bench:
@@ -429,6 +434,8 @@ def main() -> None:
     sub.add_parser("demo-cache")
     sub.add_parser("notion-sync")
     sub.add_parser("muestra-urls")
+    sub.add_parser("sample-claims")
+    sub.add_parser("editor-candidatos")
 
     args = p.parse_args()
     {
@@ -445,6 +452,8 @@ def main() -> None:
         "demo-cache": _cmd_demo_cache,
         "notion-sync": _cmd_notion_sync,
         "muestra-urls": _cmd_muestra_urls,
+        "sample-claims": _cmd_sample_claims,
+        "editor-candidatos": _cmd_editor_candidatos,
     }[args.cmd](args)
 
 
@@ -476,6 +485,68 @@ def _cmd_muestra_urls(args) -> None:
         for r in muestra:
             w.writerow([r["id"], r["medio"], r["titulo"], r["fecha_publicacion"], r["url"], "", ""])
     print(f"Muestra de {len(muestra)} URLs escrita en {path}")
+
+
+def _cmd_sample_claims(args) -> None:
+    """M5.1: exporta 30 afirmaciones al azar para revisión humana (semilla fija)."""
+    import csv
+    import glob
+    import random
+
+    reportes = sorted(glob.glob(str(S.REPORTS_DIR / "metrics_*.json")), reverse=True)
+    if not reportes:
+        print("No hay corridas de evaluación. Corre `make eval` primero.")
+        sys.exit(1)
+    data = json.loads(open(reportes[0], encoding="utf-8").read())
+    afirmaciones = []
+    for c in data.get("casos", []):
+        for a in c.get("afirmaciones", []):
+            afirmaciones.append(
+                {
+                    "afirmacion_id": c.get("id"),
+                    "texto": a.get("texto"),
+                    "evidencia_id": a.get("evidencia_id"),
+                    "evidencia_texto": "",
+                    "sustentada": "",
+                }
+            )
+    rng = random.Random(42)
+    muestra = rng.sample(afirmaciones, min(30, len(afirmaciones)))
+    path = S.LABELS_DIR / "revision_pendiente.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(
+            fh,
+            fieldnames=["afirmacion_id", "texto", "evidencia_id", "evidencia_texto", "sustentada"],
+        )
+        w.writeheader()
+        w.writerows(muestra)
+    print(f"{len(muestra)} afirmaciones en {path}")
+
+
+def _cmd_editor_candidatos(args) -> None:
+    """M5.1 extra c: 20 eventos del ranking en orden aleatorio, sin puntaje."""
+    import csv
+    import random
+
+    from faro import db
+
+    S.ensure_dirs()
+    conn = db.connect()
+    rows = db.fetchall(
+        conn,
+        "SELECT e.id, e.titulo_canonico, e.fecha_primera, e.n_medios "
+        "FROM evento e ORDER BY RANDOM()",
+    )
+    conn.close()
+    rng = random.Random(42)
+    muestra = rng.sample(rows, min(20, len(rows)))
+    path = S.LABELS_DIR / "editor_candidatos.csv"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["evento_id", "titulo", "fecha", "medios"])
+        for r in muestra:
+            w.writerow([r["id"], r["titulo_canonico"], r["fecha_primera"], r["n_medios"]])
+    print(f"{len(muestra)} candidatos en {path}")
 
 
 if __name__ == "__main__":

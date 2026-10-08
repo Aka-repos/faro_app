@@ -23,6 +23,8 @@ dependencies = [
   # NLP (obligatorio, D-11): embeddings y entidades reales
   "sentence-transformers",
   "spacy",
+  # Modelo de spaCy fijado como dependencia directa (offline, M7.1)
+  "es-core-news-md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl",
   # LLM
   "litellm",
   # interfaz y grafo
@@ -42,12 +44,24 @@ scrapling = [
 [dependency-groups]
 dev = ["pytest", "ruff"]
 
+# torch para CPU en Linux (M7.1): evita instalar la variante CUDA (~3 GB).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["faro", "schemas", "config"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.ruff]
 line-length = 100

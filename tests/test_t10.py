@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import json
 
-from faro.llm import gateway
+from faro.llm import gateway, providers
 
 
-def test_cascada_cae_a_extractivo():
-    # Sin proveedor configurado y sin Ollama, `auto` debe caer al extractivo.
+def _sin_ollama(monkeypatch):
+    def _raise(*a, **k):
+        raise RuntimeError("ollama apagado en test")
+
+    monkeypatch.setattr(providers, "call_ollama", _raise)
+
+
+def test_cascada_cae_a_extractivo(monkeypatch):
+    # Sin proveedor y sin Ollama (simulado), `auto` debe caer al extractivo.
+    _sin_ollama(monkeypatch)
     r = gateway.generate(
         [{"role": "user", "content": "genera"}],
         lente="editorial",
@@ -22,7 +30,8 @@ def test_cascada_cae_a_extractivo():
     assert json.loads(r["texto"])["titulo"] == "ok"
 
 
-def test_modo_usuario_sin_clave_cae_a_extractivo():
+def test_modo_usuario_sin_clave_cae_a_extractivo(monkeypatch):
+    _sin_ollama(monkeypatch)
     r = gateway.generate(
         [{"role": "user", "content": "genera"}],
         modo="usuario",
