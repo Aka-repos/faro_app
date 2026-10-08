@@ -373,7 +373,14 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
     """
     import time as _time
 
-    g = {"intentos": 0, "ok": 0, "errores": 0, "pendientes_429": 0, "desde_cache": 0, "detalle": []}
+    g = {
+        "intentos": 0,
+        "ok": 0,
+        "errores": 0,
+        "pendientes_reintento": 0,
+        "desde_cache": 0,
+        "detalle": [],
+    }
     keywords = load_keywords()["temas"]
     temas_consulta = [f"({(' OR '.join(palabras[:3]))})" for _tema, palabras in keywords.items()]
     gclient = politeness.PoliteClient(rate_limit_s=10.0)
@@ -403,8 +410,8 @@ def _recolectar_gdelt(desde, hasta) -> tuple[list[dict], dict]:
                 filas, error = apis.gdelt(q, ini, fin, maxrec=250, client=gclient)
             if error:
                 g["errores"] += 1
-                if "429" in error:
-                    g["pendientes_429"] += 1
+                if "429" in error or "HTTP ?" in error:
+                    g["pendientes_reintento"] += 1
                 g["detalle"].append({"mes": mes, "query": q, "ok": False, "error": error})
                 print(f"    gdelt {mes} '{q[:40]}': error {error}")
                 continue

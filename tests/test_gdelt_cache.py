@@ -114,7 +114,19 @@ def test_gdelt_429_espera_120s_y_reintenta(monkeypatch, tmp_path):
     assert len(llamadas) == 2 * n  # una inicial + una tras 120 s por consulta
     assert 120 in sleeps
     assert g["errores"] == n
-    assert g["pendientes_429"] == n  # punto 5: pendientes por 429
+    assert g["pendientes_reintento"] == n  # pendientes por reintento
+
+
+def test_error_sin_codigo_cuenta_pendientes_reintento(monkeypatch, tmp_path):
+    monkeypatch.setattr(collect, "_GDELT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+
+    def _fake_gdelt(q, ini, fin, maxrec=250, client=None):
+        return [], "HTTP ? tras 3 intentos"  # sin código
+
+    monkeypatch.setattr(collect.apis, "gdelt", _fake_gdelt)
+    _noticias, g = collect._recolectar_gdelt(datetime(2025, 10, 1), datetime(2025, 11, 1))
+    assert g["pendientes_reintento"] == len(_queries_mes())
 
 
 def test_resumen_medios():
