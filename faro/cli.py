@@ -190,6 +190,23 @@ def _cmd_eval(args) -> None:
     print(json.dumps(m["abstencion"], ensure_ascii=False, indent=2))
 
 
+def _n_splits_y_clases_raras(etiquetas: list[str]) -> tuple[int, list[str]]:
+    """(n_splits para CV, clases con <2 ejemplos a excluir).
+
+    Si una clase tiene menos ejemplos que n_splits, se usa min(5, mínimo por clase);
+    las clases con <2 ejemplos se excluyen de la validación cruzada.
+    """
+    from collections import Counter
+
+    conteos = Counter(etiquetas)
+    raras = [c for c, n in conteos.items() if n < 2]
+    restantes = [e for e in etiquetas if e not in set(raras)]
+    if not restantes:
+        return 5, raras
+    min_por_clase = min(Counter(restantes).values())
+    return max(2, min(5, min_por_clase)), raras
+
+
 def _cmd_eval_nlp(args) -> None:
     """Evaluación NLP NO circular: lee data/labels/temas.csv y pares.csv (etiquetas humanas)."""
     import csv
@@ -231,10 +248,22 @@ def _cmd_eval_nlp(args) -> None:
     from sklearn.linear_model import LogisticRegression
 
     clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-    preds = cross_val_predict(
-        clf, matriz, etiquetas, cv=StratifiedKFold(5, shuffle=True, random_state=42)
-    )
-    macro_lr = f1_score(etiquetas, preds, average="macro")
+    # Punto 4: n_splits reducido si hay clases con pocos ejemplos; <2 ejemplos se excluyen.
+    n_splits, clases_raras = _n_splits_y_clases_raras(etiquetas)
+    excluir = set(clases_raras)
+    idx = [i for i, e in enumerate(etiquetas) if e not in excluir]
+    etiquetas_cv = [etiquetas[i] for i in idx]
+    matriz_cv = matriz[idx] if idx else matriz
+    if etiquetas_cv:
+        preds = cross_val_predict(
+            clf,
+            matriz_cv,
+            etiquetas_cv,
+            cv=StratifiedKFold(n_splits, shuffle=True, random_state=42),
+        )
+        macro_lr = f1_score(etiquetas_cv, preds, average="macro")
+    else:
+        macro_lr = 0.0
 
     # Entrenar final con etiquetas string (clf.classes_ = fuente de verdad) y guardar dict.
     import joblib
@@ -261,6 +290,8 @@ def _cmd_eval_nlp(args) -> None:
         "macro_f1_lr": round(float(macro_lr), 4),
         "macro_f1_baseline": round(float(macro_baseline), 4),
         "mejora": round(float(macro_lr) - float(macro_baseline), 4),
+        "n_splits_cv": n_splits,
+        "clases_excluidas_cv": clases_raras,
         "clases": list(clf.classes_),
     }
 
