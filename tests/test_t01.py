@@ -20,6 +20,22 @@ def test_fecha_invalida_a_cuarentena():
     assert motivo == "fecha_publicacion_invalida"
 
 
+def test_sin_fecha_a_cuarentena():
+    raw = {
+        "tipo": "noticia",
+        "id": "z",
+        "fuente_id": "tvn",
+        "titulo": "sin fecha",
+        "url": "https://a.b/sinfecha",
+        "medio": "TVN",
+        "fecha_publicacion": None,
+        "fecha_deteccion": None,
+    }
+    rec, motivo = validar_noticia(raw)
+    assert rec is None
+    assert motivo == "sin_fecha"
+
+
 def test_nulos_se_conservan():
     raw = {
         "tipo": "noticia",

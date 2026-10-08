@@ -51,6 +51,9 @@ def validar_noticia(raw: dict) -> tuple[dict | None, str | None]:
     det = _iso_utc(raw.get("fecha_deteccion"))
     if raw.get("fecha_deteccion") and det is None:
         return None, "fecha_deteccion_invalida"
+    # Sin ninguna fecha -> cuarentena (punto 2).
+    if pub is None and det is None:
+        return None, "sin_fecha"
     # La fecha de "ventana" es la de detección (cuándo lo vimos) o la publicación.
     fecha_ventana = det or pub
     if fecha_ventana is not None and not _en_ventana(fecha_ventana):
