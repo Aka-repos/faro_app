@@ -30,9 +30,9 @@ _INDEX = _HTTP_DIR / "index.jsonl"
 class PoliteClient:
     """httpx.Client con cortesía: robots, pausa por dominio, reintentos y evidencia."""
 
-    def __init__(self, rate_limit_s: float = 3.0) -> None:
+    def __init__(self, rate_limit_s: float = 3.0, timeout: float | None = None) -> None:
         self.client = httpx.Client(
-            timeout=S.HTTP_TIMEOUT,
+            timeout=timeout or S.HTTP_TIMEOUT,
             follow_redirects=True,
             headers={"User-Agent": S.USER_AGENT},
         )

@@ -20,9 +20,12 @@ WB_COUNTRIES = apis.WB_COUNTRIES
 ANIOS = range(2010, 2025)
 
 
-def banco_mundial() -> list[dict]:
-    """Cuadrícula completa 6 países × 6 indicadores × 2010–2024, conservando nulos."""
-    observados = apis.banco_mundial()
+def banco_mundial() -> tuple[list[dict], list[dict]]:
+    """Cuadrícula completa 6 países × 6 indicadores × 2010–2024, conservando nulos.
+
+    Devuelve (grid, fallos) para poder reportar los fallos sin detener la recolección.
+    """
+    observados, fallos = apis.banco_mundial()
     clave = {(r["pais_iso3"], r["indicador_id"], r["anio"]) for r in observados}
     out = list(observados)
     hoy = datetime.now(UTC).isoformat()
@@ -43,7 +46,7 @@ def banco_mundial() -> list[dict]:
                             "licencia": "CC BY 4.0",
                         }
                     )
-    return out
+    return out, fallos
 
 
 def usgs(desde: str = "2024-01-01", hasta: str = "2026-10-01", minmag: float = 3.0) -> list[dict]:

@@ -393,8 +393,10 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     print(f"[{_time.time() - t0:6.1f}s] Noticias: {len(noticias)} (guardadas en noticias.jsonl).")
 
     print(f"[{_time.time() - t0:6.1f}s] Banco Mundial...")
-    indicadores = oficiales.banco_mundial()
-    print(f"[{_time.time() - t0:6.1f}s] Banco Mundial: {len(indicadores)} filas.")
+    indicadores, fallos_wb = oficiales.banco_mundial()
+    print(
+        f"[{_time.time() - t0:6.1f}s] Banco Mundial: {len(indicadores)} filas, {len(fallos_wb)} fallos."
+    )
     print(f"[{_time.time() - t0:6.1f}s] USGS...")
     sismos = oficiales.usgs()
     print(f"[{_time.time() - t0:6.1f}s] USGS: {len(sismos)} sismos.")
@@ -402,7 +404,9 @@ def recolectar(fuentes: list[str] | None = None, desde=None, hasta=None) -> dict
     series_sbp = oficiales.sbp()
     series_acp = oficiales.acp()
     series = series_inec + series_sbp + series_acp
-    reporte["banco_mundial"] = {"ok": len(indicadores)}
+    reporte["banco_mundial"] = {"ok": len(indicadores), "fallos": len(fallos_wb)}
+    if fallos_wb:
+        reporte["banco_mundial"]["detalle_fallos"] = fallos_wb[:20]
     reporte["usgs"] = {"ok": len(sismos)}
     reporte["inec"] = {"ok": len(series_inec), "no_disponible": len(series_inec) == 0}
     reporte["sbp"] = {"ok": len(series_sbp), "no_disponible": len(series_sbp) == 0}

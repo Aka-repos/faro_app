@@ -114,20 +114,34 @@ def _hash_url(url: str) -> str:
     return hashlib.sha1(f"{u.netloc.lower()}{u.path.rstrip('/')}".encode()).hexdigest()[:16]
 
 
-def banco_mundial() -> list[dict]:
-    """Descarga la cuadrícula país x indicador x año (2010–2024), conservando nulos."""
-    out = []
+def banco_mundial() -> tuple[list[dict], list[dict]]:
+    """Cuadrícula país × indicador × año vía PoliteClient (pausa 1 s, timeout 30 s, 2 reintentos).
+
+    Devuelve (observados, fallos); los fallos se registran sin detener la recolección.
+    """
+    from faro.scrape import politeness
+
+    out: list[dict] = []
+    fallos: list[dict] = []
     base = "https://api.worldbank.org/v2/country/{c}/indicator/{i}"
+    client = politeness.PoliteClient(rate_limit_s=1.0, timeout=30.0)
     for c in WB_COUNTRIES:
         for i in WB_INDICATORS:
             try:
-                r = httpx.get(
+                r = client.get(
                     base.format(c=c, i=i),
+                    fuente_id="banco_mundial",
                     params={"format": "json", "per_page": 100, "date": "2010:2024"},
-                    timeout=S.HTTP_TIMEOUT,
-                    headers={"User-Agent": S.USER_AGENT},
                 )
-                r.raise_for_status()
+                if r is None or r.status_code >= 400:
+                    fallos.append(
+                        {
+                            "pais_iso3": c,
+                            "indicador_id": i,
+                            "error": f"HTTP {r.status_code if r else 'sin respuesta'}",
+                        }
+                    )
+                    continue
                 payload = r.json()
                 if len(payload) < 2:
                     continue
@@ -145,9 +159,9 @@ def banco_mundial() -> list[dict]:
                                 "licencia": "CC BY 4.0",
                             }
                         )
-            except Exception:  # noqa: BLE001
-                continue
-    return out
+            except Exception as e:  # noqa: BLE001
+                fallos.append({"pais_iso3": c, "indicador_id": i, "error": str(e)[:120]})
+    return out, fallos
 
 
 def _unidad_wb(i: str) -> str:
