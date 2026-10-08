@@ -54,6 +54,23 @@ def test_solo_fecha_deteccion_valida():
     assert rec["fecha_deteccion"] == "2026-01-15T00:00:00+00:00"
 
 
+def test_fecha_gdelt_se_normaliza_a_iso_utc():
+    # GDELT seendate "20260928T101500Z" -> "2026-09-28T10:15:00+00:00".
+    raw = {
+        "tipo": "noticia",
+        "id": "g",
+        "fuente_id": "gdelt",
+        "titulo": "fecha compacta",
+        "url": "https://a.b/g",
+        "medio": "GDELT",
+        "fecha_publicacion": None,
+        "fecha_deteccion": "20260928T101500Z",
+    }
+    rec, motivo = validar_noticia(raw)
+    assert rec is not None and motivo is None
+    assert rec["fecha_deteccion"] == "2026-09-28T10:15:00+00:00"
+
+
 def test_nulos_se_conservan():
     raw = {
         "tipo": "noticia",

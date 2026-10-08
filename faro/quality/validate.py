@@ -59,8 +59,16 @@ def validar_noticia(raw: dict) -> tuple[dict | None, str | None]:
     if fecha_ventana is not None and not _en_ventana(fecha_ventana):
         return None, "fuera_de_ventana"
 
+    # Normalizar fechas a ISO 8601 UTC (GDELT trae "20260928T101500Z", que rompe
+    # el orden por texto en SQL y en la UI).
+    norm = {k: v for k, v in raw.items() if k in RegistroNoticia.model_fields}
+    if pub is not None:
+        norm["fecha_publicacion"] = pub.isoformat()
+    if det is not None:
+        norm["fecha_deteccion"] = det.isoformat()
+
     try:
-        reg = RegistroNoticia(**{k: v for k, v in raw.items() if k in RegistroNoticia.model_fields})
+        reg = RegistroNoticia(**norm)
     except ValidationError as e:
         return None, f"schema:{_primera(e)}"
     return reg.model_dump(), None
