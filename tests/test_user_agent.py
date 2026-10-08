@@ -1,4 +1,5 @@
 """Punto 8: el User-Agent nunca se disfraza de navegador."""
+
 from __future__ import annotations
 
 import config.settings as S
