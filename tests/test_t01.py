@@ -36,6 +36,24 @@ def test_sin_fecha_a_cuarentena():
     assert motivo == "sin_fecha"
 
 
+def test_solo_fecha_deteccion_valida():
+    # GDELT: fecha_publicacion None, solo fecha_deteccion (seendate) -> válida.
+    raw = {
+        "tipo": "noticia",
+        "id": "w",
+        "fuente_id": "gdelt",
+        "titulo": "solo deteccion",
+        "url": "https://a.b/gdelt",
+        "medio": "GDELT",
+        "fecha_publicacion": None,
+        "fecha_deteccion": "2026-01-15T00:00:00+00:00",
+    }
+    rec, motivo = validar_noticia(raw)
+    assert rec is not None and motivo is None
+    assert rec["fecha_publicacion"] is None
+    assert rec["fecha_deteccion"] == "2026-01-15T00:00:00+00:00"
+
+
 def test_nulos_se_conservan():
     raw = {
         "tipo": "noticia",

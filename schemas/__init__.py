@@ -26,7 +26,7 @@ class RegistroNoticia(BaseModel):
     medio: str
     dominio: str = ""
     idioma: str = "es"
-    fecha_publicacion: str  # ISO 8601 UTC
+    fecha_publicacion: str | None = None  # ISO 8601 UTC (puede faltar en GDELT; ver fecha_deteccion)
     fecha_deteccion: str | None = None
     fecha_extraccion: str | None = None
     alcance_texto: Literal["titular", "metadatos", "resumen", "cuerpo"] = "titular"
