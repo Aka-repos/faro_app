@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64" role="img" aria-label="FARO">
+  <polygon points="24,14 1,8 1,20" fill="#e8a317" opacity=".28"/>
+  <polygon points="24,14 47,8 47,20" fill="#e8a317" opacity=".28"/>
+  <path d="M3 62 Q9 53 17 55 L24 51 L32 55 Q40 53 45 62 Z" fill="#12233f"/>
+  <polygon points="16,55 32,55 28,20 20,20" fill="#12233f"/>
+  <polygon points="16.9,46 31.1,46 30.4,40 17.6,40" fill="#fff"/>
+  <polygon points="18.4,34 29.6,34 28.9,28 19.1,28" fill="#fff"/>
+  <rect x="17.5" y="17.5" width="13" height="2.8" fill="#12233f"/>
+  <rect x="20.5" y="9.5" width="7" height="8" fill="#e8a317"/>
+  <polygon points="19.5,9.5 28.5,9.5 24,4.5" fill="#12233f"/>
+  <rect x="23.6" y="1.5" width="0.8" height="3.5" fill="#12233f"/>
+  <rect x="22.4" y="48" width="3.2" height="7" fill="#fff"/>
+</svg>
